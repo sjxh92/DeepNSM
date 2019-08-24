@@ -1,48 +1,51 @@
 from Network_environment import NetworkEnvironment
-from DQN import Double_DQN
+from DQN import DQNPrioiritizedReplay
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 import random
 
-MEMORY_SIZE = 3000
+MEMORY_SIZE = 10000
 
 
 def run_deepnsm(RL):
-    step = 0
-    # initial observation
-    observation = env.init_state()
-    print('--------------------step------------------------')
-    print(observation)
-
-    while True:
-
-        print(step)
-        # RL choose the action based on the observation
-        action = RL.choose_action(observation)
-
-        # RL execute action
-        observation_, reward = env.next(action)
-
-        print('---------------to the store transition--------------')
+    total_step = 0
+    steps = []
+    episodes = []
+    for i_episode in range(20):
+        # initial observation
+        observation = env.init_state()
+        print('--------------------step------------------------')
         print(observation)
-        print(action)
-        print(reward)
-        print(observation_)
-        # print(action.shape)
+        while True:
+            # the exploration step of a episode equals the number of requests
+            # request = 0
 
-        # store the transition(s, a, r, s_)
-        RL.store_transition(observation, action, reward, observation_)
+            # RL choose the action based on the observation
+            action = RL.choose_action(observation)
 
-        if step > MEMORY_SIZE:
-            RL.learn()
+            # RL execute action
+            observation_, reward = env.next(action)
 
-        if step - MEMORY_SIZE > 6000:
-            break
+            print('---------------to the store transition--------------')
+            print(observation)
+            print(action)
+            print(reward)
+            print(observation_)
+            # print(action.shape)
 
-        observation = observation_
-        step += 1
-    return RL.q
+            # store the transition(s, a, r, s_)
+            RL.store_transition(observation, action, reward, observation_)
+
+            if total_step > MEMORY_SIZE:
+                RL.learn()
+
+            if total_step % (2 * MEMORY_SIZE) == 0:
+                break
+
+            observation = observation_
+            total_step += 1
+        return RL.q
 
 
 if __name__ == "__main__":
@@ -51,11 +54,13 @@ if __name__ == "__main__":
     # print(env.topology.nodes.data())
     sess = tf.Session()
     with tf.variable_scope('Natural_DQN'):
-        natural_DQN = Double_DQN(n_actions=env.n_action_mapping, n_features=env.n_feature, memory_size=MEMORY_SIZE,
-                                 e_greedy_increment=0.001, double_q=False, sess=sess)
-    with tf.variable_scope('Double_DQN'):
-        double_DQN = Double_DQN(n_actions=env.n_action_mapping, n_features=env.n_feature, memory_size=MEMORY_SIZE,
-                                e_greedy_increment=0.001, double_q=True, sess=sess)
+        natural_DQN = DQNPrioiritizedReplay(n_actions=env.n_action_mapping, n_features=env.n_feature,
+                                            memory_size=MEMORY_SIZE,
+                                            e_greedy_increment=0.00005, prioritized=False, sess=sess)
+    with tf.variable_scope('DQN_'):
+        double_DQN = DQNPrioiritizedReplay(n_actions=env.n_action_mapping, n_features=env.n_feature,
+                                           memory_size=MEMORY_SIZE,
+                                           e_greedy_increment=0.00005, prioritized=True, sess=sess)
 
     sess.run(tf.global_variables_initializer())
 

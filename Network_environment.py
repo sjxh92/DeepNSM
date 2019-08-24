@@ -21,52 +21,82 @@ class NetworkEnvironment(object):
     def __init__(self):
         # self.n_feature = NODE_NUM + 2 + J_NODE * M_VM + K_LINK * W_WAVELENGTH
         self.n_feature = NODE_NUM + LINK_NUM + 1
-        self.action_space = np.array([[0, 1, 6, 0],
-                                      [0, 1, 6, 1],
-                                      [0, 1, 6, 6],
-                                      [0, 2, 6, 0],
-                                      [0, 2, 6, 2],
-                                      [0, 2, 6, 6],
-                                      [1, 6, 1],
-                                      [1, 6, 6],
-                                      [1, 2, 6, 1],
-                                      [1, 2, 6, 2],
-                                      [1, 2, 6, 6],
-                                      [2, 6, 2],
-                                      [2, 6, 6],
-                                      [3, 6, 3],
-                                      [3, 6, 6],
-                                      [4, 6, 4],
-                                      [4, 6, 6],
-                                      [5, 3, 6, 5],
-                                      [5, 3, 6, 3],
-                                      [5, 3, 6, 6],
-                                      [5, 4, 6, 5],
-                                      [5, 4, 6, 4],
-                                      [5, 4, 6, 6]])
+        self.action_space = []
         self.n_action_mapping = len(self.action_space)
         self._topology()
+        self.init_action_space()
 
     def _topology(self):
         self.topology = nx.Graph()
         for i in range(NODE_NUM):
             self.topology.add_node(i, capacity=100)
-        self.topology.add_edge(0, 1, distance=5, capacity=LINK_CAPACITY)
-        self.topology.add_edge(1, 3, distance=12, capacity=LINK_CAPACITY)
-        self.topology.add_edge(3, 5, distance=6, capacity=LINK_CAPACITY)
-        self.topology.add_edge(5, 4, distance=5, capacity=LINK_CAPACITY)
-        self.topology.add_edge(4, 2, distance=15, capacity=LINK_CAPACITY)
-        self.topology.add_edge(2, 0, distance=7, capacity=LINK_CAPACITY)
+        self.topology.add_edge(0, 1, weight=1050, capacity=LINK_CAPACITY)
+        self.topology.add_edge(1, 0, weight=1050, capacity=LINK_CAPACITY)
+        self.topology.add_edge(1, 2, weight=600, capacity=LINK_CAPACITY)
+        self.topology.add_edge(2, 1, weight=600, capacity=LINK_CAPACITY)
+        self.topology.add_edge(0, 2, weight=1500, capacity=LINK_CAPACITY)
+        self.topology.add_edge(2, 0, weight=1500, capacity=LINK_CAPACITY)
+        self.topology.add_edge(1, 3, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(3, 1, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(3, 4, weight=600, capacity=LINK_CAPACITY)
+        self.topology.add_edge(4, 3, weight=600, capacity=LINK_CAPACITY)
+        self.topology.add_edge(4, 5, weight=1200, capacity=LINK_CAPACITY)
+        self.topology.add_edge(5, 4, weight=1200, capacity=LINK_CAPACITY)
+        self.topology.add_edge(4, 6, weight=600, capacity=LINK_CAPACITY)
+        self.topology.add_edge(6, 4, weight=600, capacity=LINK_CAPACITY)
+        self.topology.add_edge(6, 7, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(7, 6, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(7, 8, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(8, 7, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(8, 9, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(9, 8, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(6, 9, weight=1350, capacity=LINK_CAPACITY)
+        self.topology.add_edge(9, 6, weight=1350, capacity=LINK_CAPACITY)
+        self.topology.add_edge(2, 5, weight=1800, capacity=LINK_CAPACITY)
+        self.topology.add_edge(5, 2, weight=1800, capacity=LINK_CAPACITY)
+        self.topology.add_edge(5, 9, weight=1050, capacity=LINK_CAPACITY)
+        self.topology.add_edge(9, 5, weight=1050, capacity=LINK_CAPACITY)
+        self.topology.add_edge(3, 10, weight=1950, capacity=LINK_CAPACITY)
+        self.topology.add_edge(10, 3, weight=1950, capacity=LINK_CAPACITY)
+        self.topology.add_edge(0, 7, weight=2400, capacity=LINK_CAPACITY)
+        self.topology.add_edge(7, 0, weight=2400, capacity=LINK_CAPACITY)
+        self.topology.add_edge(10, 11, weight=600, capacity=LINK_CAPACITY)
+        self.topology.add_edge(11, 10, weight=600, capacity=LINK_CAPACITY)
+        self.topology.add_edge(10, 12, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(12, 10, weight=750, capacity=LINK_CAPACITY)
+        self.topology.add_edge(12, 13, weight=150, capacity=LINK_CAPACITY)
+        self.topology.add_edge(13, 12, weight=150, capacity=LINK_CAPACITY)
+        self.topology.add_edge(5, 13, weight=1800, capacity=LINK_CAPACITY)
+        self.topology.add_edge(13, 5, weight=1800, capacity=LINK_CAPACITY)
+        self.topology.add_edge(11, 13, weight=300, capacity=LINK_CAPACITY)
+        self.topology.add_edge(13, 11, weight=300, capacity=LINK_CAPACITY)
+        self.topology.add_edge(8, 12, weight=300, capacity=LINK_CAPACITY)
+        self.topology.add_edge(12, 8, weight=300, capacity=LINK_CAPACITY)
+        self.topology.add_edge(8, 11, weight=1050, capacity=LINK_CAPACITY)
+        self.topology.add_edge(11, 8, weight=1050, capacity=LINK_CAPACITY)
+        self.topology.add_edge(0, 1, weight=1050, capacity=LINK_CAPACITY)
+        self.topology.add_edge(0, 1, weight=1050, capacity=LINK_CAPACITY)
 
-        self.topology.add_edge(1, 2, distance=5, capacity=LINK_CAPACITY)
-        self.topology.add_edge(3, 4, distance=10, capacity=LINK_CAPACITY)
-        self.topology.add_edge(1, 6, distance=5, capacity=LINK_CAPACITY)
-        self.topology.add_edge(3, 6, distance=8, capacity=LINK_CAPACITY)
-        self.topology.add_edge(4, 6, distance=7, capacity=LINK_CAPACITY)
-        self.topology.add_edge(2, 6, distance=9, capacity=LINK_CAPACITY)
+    def init_action_space(self):
+        for i in range(len(self.topology.nodes)):
+            if i != 6:
+                # k_paths = nx.all_shortest_paths(self.topology, i, 6, method='dijkstra')
+                k_paths1 = nx.all_simple_paths(self.topology, i, 6, cutoff=3)
+                list_paths = list(k_paths1)
+                for j in range(len(list_paths)):
+                    action_list = []
+                    for m in range(len(list_paths[j])):
+                        link = list_paths[j]
+                        action_list.append(link.copy())
+                    for n in range(len(list_paths[j])):
+                        node = list_paths[j][n]
+                        action_list[n].append(node)
+                        self.action_space.append(action_list[n])
+        # print(self.action_space)
+        return self.action_space
 
     def init_state(self):
-        r = random.randint(0, 6)
+        r = np.random.randint(0, 14)
         s = np.empty((1, self.n_feature))
         for i in range(NODE_NUM):
             s[0][i] = self.topology.nodes[i]['capacity']
@@ -137,6 +167,17 @@ if __name__ == "__main__":
     TP = NetworkEnvironment()
     print(TP.topology.nodes[2]['capacity'])
     print(TP.topology[0][1])
+    print(len(TP.topology.edges))
+    a = [[0, 7, 6],
+         [0, 7, 6],
+         [0, 7, 6]]
+    print(a)
+    a[0].append(0)
+    print(a)
+    a[1].append(7)
+    print(a)
+    a[2].append(6)
+    print(a)
 
     # for u, v, d in TP.topology.edges(data='capacity'):
     # print((u, v, d))
