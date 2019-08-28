@@ -2,10 +2,11 @@ import numpy as np
 import networkx as nx
 import random
 import matplotlib.pyplot as plt
-import Request_generate as rg
+from Request_generate import RequestGenerate
 
-NODE_NUM = 7
-LINK_NUM = 12
+NODE_NUM = 13
+LINK_NUM = 22
+LAMDA = 3 / 10
 J_NODE = 3
 M_VM = 3
 K_LINK = 3
@@ -20,11 +21,16 @@ BANDWIDTH_REQUIREMENT = 2
 class NetworkEnvironment(object):
     def __init__(self):
         # self.n_feature = NODE_NUM + 2 + J_NODE * M_VM + K_LINK * W_WAVELENGTH
-        self.n_feature = NODE_NUM + LINK_NUM + 1
+
+        # node capacity + link capacity + request node + request traffic + holding time
+        self.n_feature = NODE_NUM + LINK_NUM + 1 + 1
         self.action_space = []
-        self.n_action_mapping = len(self.action_space)
         self._topology()
         self.init_action_space()
+        self.n_action = len(self.action_space)
+        self.request = RequestGenerate(NODE_NUM)
+        self.X = 0
+        self.memory = np.zeros([0, 4], dtype=int)  # nodeid, traffic, starttime, endtime
 
     def _topology(self):
         self.topology = nx.Graph()
@@ -95,22 +101,37 @@ class NetworkEnvironment(object):
         # print(self.action_space)
         return self.action_space
 
-    def init_state(self):
-        r = np.random.randint(0, 14)
-        s = np.empty((1, self.n_feature))
+    def get_state(self):
+        node = np.empty((1, NODE_NUM))
+        link = np.empty((1, LINK_NUM))
         for i in range(NODE_NUM):
-            s[0][i] = self.topology.nodes[i]['capacity']
+            node[0][i] = self.topology.nodes[i]['capacity']
 
-        index = NODE_NUM
+        index = 0
         for u, v, d in self.topology.edges(data='capacity'):
-            s[0][index] = d
+            link[0][index] = d
             index = index + 1
-        s[0][self.n_feature - 1] = r
+        
+        traffic, index, time = self.request.poissonNext(self.X, LAMDA)
+        if traffic != -1:
+            np.append(self.memory, [[index, traffic, self.X, self.X + time]], axis=0)
+        traffic = traffic[np.newaxis, :]
+        index = node[np.newaxis, :]
+        time = time[np.newaxis, :]
+
+                     
+        s = np.vstack((node, link, traffic, index, time))
         return s
 
-    def next(self, action):
+    def update_network(self):
+        memory_slice = self.memory[..., 2]
+        delete = np.where(memory_slice == self.X)
+        for i in delete:
+            
 
-        s = self.init_state()
+    def step(self, action):
+
+        s = self.get_state()
         b_not_enough = False
         c_not_enough = False
         wrong_action = False
@@ -120,7 +141,7 @@ class NetworkEnvironment(object):
         candidate_node = current_action[-1]
 
         # check the request position
-        if current_action[0] == s[0][-1]:
+        if current_action[0] == s[0][-2]:  # corresponding to index in u
             # check computation resource
             if self.topology.nodes[candidate_node]['capacity'] >= COMPUTING_REQUIREMENT:
                 # check the bandwidth resource
@@ -146,17 +167,9 @@ class NetworkEnvironment(object):
                 self.topology[current_action[i]][current_action[i + 1]]['capacity'] -= BANDWIDTH_REQUIREMENT
 
         # update the next state (including network state and request)
-        r = random.randint(0, 6)
-        s_ = np.empty((1, self.n_feature))
-        for i in range(NODE_NUM):
-            s_[0][i] = self.topology.nodes[i]['capacity']
-
-        index = NODE_NUM
-        for u, v, d in self.topology.edges(data='capacity'):
-            s_[0][index] = d
-            index = index + 1
-        s_[0][self.n_feature - 1] = r
-        return s_, reward
+        self.X = self.X + 1
+        s_ = self.get_state()
+        return s_, reward, self.X
 
     def show_topology(self):
         print(self.topology.nodes.data())
