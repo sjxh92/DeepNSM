@@ -21,4 +21,4 @@ class RequestGenerate(object):
             traffic = -1
             node = -1
             time = -1
-        return traffic, node, time
+        return node, traffic, time
