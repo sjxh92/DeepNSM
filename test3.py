@@ -1,10 +1,17 @@
-import pandas as pd
 import numpy as np
-import pandas_profiling
 
-# data = pd.read_csv('https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv')
-# data.describe()
-# data.profile_report(title='Titanic Dataset')
 
-a = np.random.poisson(lam=5)
-print(a)
+class person(object):
+    profile = None
+
+    def __init__(self, name, age, height):
+        self.name = name
+        self.age = age
+        self.height = height
+        self.profile = []
+        self.generate()
+
+    def generate(self):
+        self.profile.append(self.name)
+        self.profile.append(self.age)
+        self.profile.append(self.height)
