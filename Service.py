@@ -64,8 +64,12 @@ class Service(object):
 
     def connection_mapping(self, arrivalEvent, path):
         traffic = arrivalEvent[2]
-        for link in path:
-            link.capacity -= traffic
+        topo = self.net.topology
+        for n, nbrs in topo.adjacency():
+            for nbr, attr in nbrs.items():
+                for link in path:
+                    if n == link[0] and nbr == link[1]:
+                        topo[n][nbr]["capacity"] -= traffic
         connection = pd.DataFrame({'id': 1,
                                    'path': path,
                                    'wavelength': None,
@@ -76,7 +80,15 @@ class Service(object):
 
     def connection_release(self, cId, departuretime):
         connection = self.connections.loc(self.connections['id'] == cId)
-
+        path = connection['path']
+        traffic = connection['traffic']
+        topo = self.net.topology
+        for n, nbrs in topo.adjacency():
+            for nbr, attr in nbrs.items():
+                for link in path:
+                    if n == link[0] and nbr == link[1]:
+                        topo[n][nbr]['capacity'] += traffic
+        self.connections = self.connections[~self.connections['id'].isin(cId)]
 
 
 if __name__ == "__main__":
