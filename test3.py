@@ -15,3 +15,5 @@ class person(object):
         self.profile.append(self.name)
         self.profile.append(self.age)
         self.profile.append(self.height)
+
+
