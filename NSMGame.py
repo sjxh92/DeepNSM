@@ -18,7 +18,6 @@ ARRIVAL_NOOP_OT = 1
 ARRIVAL_OP_OT = 1
 ARRIVAL_OP_NO = 1
 
-
 INIT = 0
 
 
@@ -38,7 +37,8 @@ class Request(object):
 
 
 class NSMGame(object):
-    def __init__(self, mode: str, wave_num: int, max_iter: int, rou: float, mu: float, k: int, f: int, weight):
+    def __init__(self, mode: str, wave_num: int, vm_num: int, max_iter: int, rou: float, mu: float, k: int, f: int,
+                 weight):
         """
 
         :param mode:
@@ -48,7 +48,8 @@ class NSMGame(object):
         :param k: ksp
         :param f: f candidate node for du/cu placement
         """
-        self.network = network("7node_10link", "/home/mario/PycharmProjects/DeepNSM/Resource", wave_num, max_iter, 10)
+        self.network = network("7node_10link", "/home/mario/PycharmProjects/DeepNSM/Resource", wave_num, max_iter,
+                               vm_num)
         self.action_space = []
         self.mode = mode
         self.max_iter = max_iter
@@ -77,17 +78,6 @@ class NSMGame(object):
             paths_pandas = paths_pandas.append(pd.DataFrame({'path': [path], 'weight': [capacity]}))
         paths_pandas.sort_values(by='weight', ascending=False)
         return paths_pandas
-
-    # generate (network state and request state)
-    '''
-    |resource|
-    (*****,——
-    *****,  t
-    *****,  i
-    ...     m
-    *****)  e
-           --
-    '''
 
     def reset(self):
 
@@ -126,11 +116,15 @@ class NSMGame(object):
 
     def get_state_link(self, time):
 
-        state = np.zeros(shape=(300, 10))
+        node_num = self.network.number_of_nodes()
+        link_num = self.network.number_of_edges()
+        request_holding_time = 100
+
+        state = np.zeros(shape=(pl.WINDOW*(node_num+link_num)+request_holding_time, 10))
 
         # network state:node state
         for i in range(pl.NODE_NUM):
-            node = self.network.nodes[i]
+            node = self.network.nodes[i + 1]
             capacity = node['capacity']
             state_window = capacity[time:time + pl.WINDOW]
             state[(pl.WINDOW * i):(pl.WINDOW * (i + 1))] = state_window
@@ -140,7 +134,7 @@ class NSMGame(object):
         j = pl.NODE_NUM
         for n, nbrs in self.network.adjacency():
             for nbr, eattr in nbrs.items():
-                capacity = eattr['capacity']
+                capacity = eattr['is_wave_avai']
                 state_window = capacity[time:time + pl.WINDOW]
                 state[(10 * j):(10 * (j + 1))] = state_window
                 j = j + 1
@@ -148,22 +142,22 @@ class NSMGame(object):
         # network state:request state
         state_request = np.zeros(shape=(10, 10))
 
-        holdingtime = 0
+        holding_time = 0
         traffic = 0
         for base_index in range(self.max_iter):
             if self.request[base_index].arrival_time == time:
-                holdingtime = self.request[base_index].leave_time - time
+                holding_time = self.request[base_index].leave_time - time
                 traffic = self.request[base_index].traffic
                 break
 
-        for m in range(holdingtime):
+        for m in range(holding_time):
             for n in range(traffic):
                 state_request[m][n] = 1
-
+        # print('request:', state_request)
         state[(10 * j):(10 * (j + 1))] = state_request
 
+        # print('state:', state)
         return state
-        # print(state[100:150])
 
     def get_state_path(self, time):
         pass
@@ -181,87 +175,8 @@ class NSMGame(object):
         done = False
         info = False
         # check if there are events (arrival of departure)
-        if self.event[self.event_iter][0] > self.time:
-            # if there is no event at this time, any action make no sense
-            if action == self.k * self.f:
-                # block
-                reward = NOARRIVAL_NO
-            else:
-                # choose other action
-                reward = NOARRIVAL_OT
-            self.time += 1
-        elif self.event[self.event_iter][0] == self.time:
-            # there is request arriving or leaving at this time
-            # if there is a leaving request
-            if self.event[self.event_iter][2] is False:
-                raise RuntimeError("somthing wrong, there should not be a leaving event!!!")
-            else:
-                # if it is a arriving event, process it according to the action
-                info = True
-                req = self.request[self.event[self.event_iter][1]]
-                reward = self.exec_action(action, req)
-
-                #  handle the ending of an episode
-                if self.event[self.event_iter][1] == (self.max_iter - 1):
-                    observation = self.get_state_link(self.time, 0, 0)
-                    done = True  # end of this episode
-                    return observation, reward, done, info
-
-                self.event_iter += 1
-                while self.event[self.event_iter][0] == self.time:
-                    # handle the departure event
-                    assert self.event[self.event_iter][2] is False
-                    leave_request = self.request[self.event[self.event_iter][1]]
-                    if hasattr(leave_request, 'path'):
-                        self.network.set_wave_state(wave_index=leave_request.wave_index,
-                                                    nodes=leave_request.path,
-                                                    state=True,
-                                                    check=True)
-                    else:
-                        pass
-                    self.event_iter += 1
-                self.time += 1
-        else:
-            raise EnvironmentError("there are some events remaining to be handled")
-
-        # check if the time is near ending
-        if self.event_iter == len(self.event):
-            # if all the events have been handled
-            done = True
-            observation = self.get_state_link(self.time, 0, 0)
-            return observation, reward, done, info
-
-        # handle the next state
-        if self.event[self.event_iter][0] > self.time:
-
-            observation = None
-        elif self.event[self.event_iter][0] == self.time:
-            # handle the former departure event
-            while self.event[self.event_iter][2] is False and self.event[self.event_iter][0] == self.time:
-                leave_request = self.request[self.event[self.event_iter][1]]
-                if hasattr(leave_request, 'path'):
-                    self.network.set_wave_state(wave_index=leave_request.wave_index,
-                                                nodes=leave_request.path,
-                                                state=True,
-                                                check=True)
-                else:
-                    pass
-                self.event_iter += 1
-                if self.event_iter == len(self.event):
-                    done = True
-                    observation = self.state_space_gen(self.time, 0, 0)
-                    return observation, reward, done, info
-
-            if self.event[self.event_iter][0] == self.time:
-                assert self.event[self.event_iter][2] is True
-                request = self.request[self.event[self.event_iter][1]]
-                observation = self.get_state_link(self.time)
-            else:
-                observation = self.get_state_link(self.time)
-        else:
-
-            raise EnvironmentError("some events are not handled")
-        return observation, reward, done, info
+        while self.event[self.event_iter][0] == self.time:
+            if 
 
     def exec_action(self, action: int, req: Request) -> float:
         """
@@ -281,8 +196,8 @@ class NSMGame(object):
                 return ARRIVAL_NOOP
         else:
             if is_avai:
-                route_index = action // (self.k*self.wave_num)
-                wave_index = action % (self.k*self.wave_num)
+                route_index = action // (self.k * self.wave_num)
+                wave_index = action % (self.k * self.wave_num)
                 if self.network.is_allocable(path_list[route_index], wave_index):
                     self.network.set_wave_state(wave_index=wave_index, nodes=path_list[route_index],
                                                 state=False, check=True)
@@ -324,22 +239,14 @@ class NSMGame(object):
 
 
 if __name__ == "__main__":
-    game = NSMGame("LINN", 8, 1, 0.1, 0.1, 3, 3, 1)
+    game = NSMGame(mode="LINN", wave_num=10, vm_num=10, max_iter=20, rou=0.1, mu=0.1, k=3, f=3, weight=1)
     paths = list(game.k_shortest_paths(1, 6))
-    print(paths)
-    request = Request(1, 1, 6, 1, 4, 1)
-    reward1 = game.exec_action(1, request)
-    print(reward1)
+    # print(paths)
+    # print(game.network.nodes[1]['capacity'])
+    # print(game.network.edges[1, 3]['is_wave_avai'])
+    game.reset()
+    print(game.event)
+    # request = Request(1, 1, 6, 1, 4, 1)
+    # reward1 = game.exec_action(1, request)
+    # print(reward1)
     pass
-
-
-
-
-
-
-
-
-
-
-
-
