@@ -1,4 +1,3 @@
-from Network_environment import NetworkEnvironment
 from DQN import DQNPrioiritizedReplay
 import tensorflow as tf
 import matplotlib.pyplot as plt

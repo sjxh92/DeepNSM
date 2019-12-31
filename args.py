@@ -1,7 +1,7 @@
 import argparse
 
 parser = argparse.ArgumentParser(
-    description='DeepRSM'
+    description='DeepNSM'
 )
 
 parser.add_argument('--node-capacity', type=int, default=100,
