@@ -7,6 +7,8 @@ import random
 import networkx as nx
 import chainer
 import chainerrl
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 # there is no request arriving or leaving at this time
 NOARRIVAL_NO = 1  # choose no_action
@@ -48,7 +50,7 @@ def show_requests():
               game.request[j].traffic)
 
 
-class NSMGame(object):
+class Game(object):
     def __init__(self, mode: str, total_time: int, wave_num: int, vm_num: int, max_iter: int, rou: float, mu: float, k: int, f: int,
                  weight):
         """
@@ -137,14 +139,20 @@ class NSMGame(object):
         node_num = self.network.number_of_nodes()
         link_num = self.network.number_of_edges()
         request_holding_time = 100
+        print(node_num)
+        print(link_num)
 
-        state = np.zeros(shape=(pl.WINDOW*(node_num+link_num)+request_holding_time, 10))
-
+        state = np.zeros(shape=(pl.WINDOW*(node_num+2 * link_num)+request_holding_time, 10))
+        print('+++++++++++++++', state.shape)
         # network state:node state
         for i in range(pl.NODE_NUM):
             node = self.network.nodes[i + 1]
             capacity = node['capacity']
             state_window = capacity[time:time + pl.WINDOW]
+            if state_window.shape[0] < pl.WINDOW:
+                append_list = [[0 for _ in range(10)]]
+                for j in range(pl.WINDOW - state_window.shape[0]):
+                    state_window = np.concatenate((state_window, append_list), axis=0)
             state[(pl.WINDOW * i):(pl.WINDOW * (i + 1))] = state_window
             # print(capacity)
 
@@ -154,12 +162,14 @@ class NSMGame(object):
             for nbr, eattr in nbrs.items():
                 capacity = eattr['is_wave_avai']
                 state_window = capacity[time:time + pl.WINDOW]
+                if state_window.shape[0] < pl.WINDOW:
+                    append_list = [[0 for _ in range(10)]]
+                    for j in range(pl.WINDOW - state_window.shape[0]):
+                        state_window = np.concatenate((state_window, append_list), axis=0)
                 state[(10 * j):(10 * (j + 1))] = state_window
                 j = j + 1
 
         # network state:request state
-        state_request = np.zeros(shape=(10, 10))
-
         holding_time = 0
         traffic = 0
         for base_index in range(self.max_iter):
@@ -168,11 +178,16 @@ class NSMGame(object):
                 traffic = self.request[base_index].traffic
                 break
 
+        state_request = np.zeros(shape=(holding_time, 10))
+
         for m in range(holding_time):
             for n in range(traffic):
                 state_request[m][n] = 1
         # print('request:', state_request)
-        state[(10 * j):(10 * (j + 1))] = state_request
+        index = j * pl.WINDOW
+        print('index: ', index)
+        print(state.shape)
+        state[index: (holding_time + index)] = state_request
 
         # print('state:', state)
         return state
@@ -314,7 +329,7 @@ class NSMGame(object):
 
 
 if __name__ == "__main__":
-    game = NSMGame(mode="LINN", total_time=100, wave_num=10, vm_num=10, max_iter=20, rou=2, mu=2, k=3, f=3, weight=1)
+    game = Game(mode="LINN", total_time=20, wave_num=10, vm_num=10, max_iter=20, rou=2, mu=15, k=3, f=3, weight=1)
     # paths = list(game.k_shortest_paths(1, 6))
     # print(paths)
     # print(game.network.nodes[1]['capacity'])
@@ -331,6 +346,8 @@ if __name__ == "__main__":
     action = 1
     while not done:
         obs, reward, done, info = game.step(action)
+        if done:
+            print(done)
         # print('obs? ', obs, 'reward? ', reward, 'done? ', done, 'info? ', info)
     # game.network.show_link_state()
     # print(done)

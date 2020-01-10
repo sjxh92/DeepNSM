@@ -121,12 +121,17 @@ class NetworkEnvironment(nx.Graph):
         if len(path_list) == 0 or path_list[0] is None:
             return False, -1, -1
 
+        print("end time: ", end_time, "total time:", self.total_time)
+        if end_time > self.total_time - 1:
+            return False, -1, -1
+
         for path_index, nodes in enumerate(path_list):
             edges = self.extract_path(nodes)
             for wave_index in range(self.wave_num):
                 is_avai = True
                 for edge in edges:
                     for time in range(end_time-start_time+1):
+                        print('time:', time + start_time)
                         if self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index] is False:
                             is_avai = False
                             break

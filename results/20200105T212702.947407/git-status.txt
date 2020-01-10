@@ -1,0 +1,60 @@
+位于分支 master
+您的分支与上游分支 'origin/master' 一致。
+
+要提交的变更：
+  （使用 "git reset HEAD <文件>..." 以取消暂存）
+
+	新文件：   Test/DQN_test.py
+	新文件：   results/20200103T213341.358052/args.txt
+	新文件：   results/20200103T213341.358052/command.txt
+	新文件：   results/20200103T213341.358052/environ.txt
+	新文件：   results/20200103T213341.358052/git-diff.txt
+	新文件：   results/20200103T213341.358052/git-head.txt
+	新文件：   results/20200103T213341.358052/git-log.txt
+	新文件：   results/20200103T213341.358052/git-status.txt
+	新文件：   results/20200103T213341.358052/model.gv
+	新文件：   results/20200103T231410.141829/21750_except/model.npz
+	新文件：   results/20200103T231410.141829/21750_except/optimizer.npz
+	新文件：   results/20200103T231410.141829/21750_except/target_model.npz
+	新文件：   results/20200103T231410.141829/args.txt
+	新文件：   results/20200103T231410.141829/best/model.npz
+	新文件：   results/20200103T231410.141829/best/optimizer.npz
+	新文件：   results/20200103T231410.141829/best/target_model.npz
+	新文件：   results/20200103T231410.141829/command.txt
+	新文件：   results/20200103T231410.141829/environ.txt
+	新文件：   results/20200103T231410.141829/git-diff.txt
+	新文件：   results/20200103T231410.141829/git-head.txt
+	新文件：   results/20200103T231410.141829/git-log.txt
+	新文件：   results/20200103T231410.141829/git-status.txt
+	新文件：   results/20200103T231410.141829/model.gv
+	新文件：   results/20200103T231410.141829/scores.txt
+	新文件：   results/20200103T232751.166317/100000_finish/model.npz
+	新文件：   results/20200103T232751.166317/100000_finish/optimizer.npz
+	新文件：   results/20200103T232751.166317/100000_finish/target_model.npz
+	新文件：   results/20200103T232751.166317/args.txt
+	新文件：   results/20200103T232751.166317/best/model.npz
+	新文件：   results/20200103T232751.166317/best/optimizer.npz
+	新文件：   results/20200103T232751.166317/best/target_model.npz
+	新文件：   results/20200103T232751.166317/command.txt
+	新文件：   results/20200103T232751.166317/environ.txt
+	新文件：   results/20200103T232751.166317/git-diff.txt
+	新文件：   results/20200103T232751.166317/git-head.txt
+	新文件：   results/20200103T232751.166317/git-log.txt
+	新文件：   results/20200103T232751.166317/git-status.txt
+	新文件：   results/20200103T232751.166317/model.gv
+	新文件：   results/20200103T232751.166317/scores.txt
+
+尚未暂存以备提交的变更：
+  （使用 "git add <文件>..." 更新要提交的内容）
+  （使用 "git checkout -- <文件>..." 丢弃工作区的改动）
+
+	修改：     Train_DQN.py
+	修改：     args.py
+
+未跟踪的文件:
+  （使用 "git add <文件>..." 以包含要提交的内容）
+
+	.idea/misc.xml
+	__pycache__/
+	results/20200105T212702.947407/
+
