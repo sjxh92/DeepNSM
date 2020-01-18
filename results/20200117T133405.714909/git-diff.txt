@@ -1,0 +1,484 @@
+diff --git a/MetroNetwork.py b/MetroNetwork.py
+index 68d6b6a..b1742fb 100644
+--- a/MetroNetwork.py
++++ b/MetroNetwork.py
+@@ -6,6 +6,13 @@ from itertools import islice
+ import random
+ import matplotlib.pyplot as plt
+ 
++import logging
++
++logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelno)s - %(name)s - '
++                                                '%(levelname)s - %(filename)s - %(funcName)s - '
++                                                '%(message)s')
++logger = logging.getLogger(__name__)
++
+ NODE_NUM = 7
+ LINK_NUM = 12
+ LAMDA = 3 / 10
+@@ -96,18 +103,15 @@ class NetworkEnvironment(nx.Graph):
+         :param check:
+         :return:
+         """
+-        print("_+_+_+_+_+_+_+_+_+_+_+_+_", nodes)
+         assert len(nodes) >= 2
+         start_node = nodes[0]
+         for i in range(1, len(nodes)):
+             end_node = nodes[i]
+-            print('the allocated link is: ', start_node, '-->', end_node, self.edges[start_node, end_node])
++            #  logger.info('the allocated link is: ', start_node, '-->', end_node, self.edges[start_node, end_node])
+             for j in range(holding_time):
+-                print("jjjjjjjjjj: ", j, "holding time: ", holding_time)
+                 if check:
+                     assert self.get_edge_data(start_node, end_node)['is_wave_avai'][time_index+j][wave_index] != state
+                 self.get_edge_data(start_node, end_node)['is_wave_avai'][time_index+j][wave_index] = state
+-            print('the allocated link is: ', start_node, '-->', end_node, self.edges[start_node, end_node])
+             start_node = end_node
+ 
+     def exist_rw_allocation(self, path_list: list, start_time: int, end_time: int) -> [bool, int, int]:
+@@ -121,7 +125,6 @@ class NetworkEnvironment(nx.Graph):
+         if len(path_list) == 0 or path_list[0] is None:
+             return False, -1, -1
+ 
+-        print("end time: ", end_time, "total time:", self.total_time)
+         if end_time > self.total_time - 1:
+             return False, -1, -1
+ 
+@@ -131,7 +134,7 @@ class NetworkEnvironment(nx.Graph):
+                 is_avai = True
+                 for edge in edges:
+                     for time in range(end_time-start_time+1):
+-                        print('time:', time + start_time)
++                        logger.info('time:' + str(time + start_time))
+                         if self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index] is False:
+                             is_avai = False
+                             break
+@@ -149,6 +152,10 @@ class NetworkEnvironment(nx.Graph):
+         :param wave_index:
+         :return:
+         """
++
++        if end_time >= self.total_time:
++            return False
++
+         edges = self.extract_path(path)
+         is_avai = True
+         for edge in edges:
+diff --git a/NSMGame.py b/NSMGame.py
+index 50a1302..70bc700 100644
+--- a/NSMGame.py
++++ b/NSMGame.py
+@@ -8,7 +8,11 @@ import networkx as nx
+ import chainer
+ import chainerrl
+ import logging
+-logging.basicConfig(level=logging.DEBUG)
++
++logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelno)s - %(name)s - '
++                                                '%(levelname)s - %(filename)s - %(funcName)s - '
++                                                '%(message)s')
++logger = logging.getLogger(__name__)
+ 
+ # there is no request arriving or leaving at this time
+ NOARRIVAL_NO = 1  # choose no_action
+@@ -50,8 +54,33 @@ def show_requests():
+               game.request[j].traffic)
+ 
+ 
++class ActionSpace(object):
++    def __init__(self, n):
++        """
++
++        :param n:
++        """
++        self.n = n
++
++    def sample(self):
++        return np.random.randint(self.n)
++
++
++class ObservationSpace(object):
++    def __init__(self, node_num, link_num, req_time):
++        """
++
++        :param node_num:
++        :param link_num:
++        :param req_time:
++        """
++        self.observation_size = args.window * (node_num + 2 * link_num) + req_time
++        self.observation_space = np.zeros(shape=(self.observation_size, 10))
++
++
+ class Game(object):
+-    def __init__(self, mode: str, total_time: int, wave_num: int, vm_num: int, max_iter: int, rou: float, mu: float, k: int, f: int,
++    def __init__(self, mode: str, total_time: int, wave_num: int, vm_num: int, max_iter: int, rou: float, mu: float,
++                 k: int, f: int,
+                  weight):
+         """
+ 
+@@ -66,10 +95,10 @@ class Game(object):
+                                wave_num=wave_num,
+                                vm_num=vm_num,
+                                total_time=total_time)
+-        self.action_space = []
+         self.mode = mode
+         self.max_iter = max_iter
+         self.wave_num = wave_num
++        self.total_time = total_time
+         self.rou = rou
+         self.mu = mu
+         self.k = k
+@@ -81,6 +110,13 @@ class Game(object):
+         self.event = []
+         self.request = {}
+ 
++        node_num = self.network.number_of_nodes()
++        link_num = self.network.number_of_edges()
++        req_time = 100
++        self.observation_space = ObservationSpace(node_num, link_num, req_time).observation_space
++        self.action_space = ActionSpace(10)
++        self.success_request = 0
++
+     def action_space_gen(self, arrivalEvent):
+         # transform the candidate paths into pandas format [path, weight]
+         paths = self.service.candidate_paths(arrivalEvent, 3)
+@@ -136,14 +172,8 @@ class Game(object):
+ 
+     def get_state_link(self, time):
+ 
+-        node_num = self.network.number_of_nodes()
+-        link_num = self.network.number_of_edges()
+-        request_holding_time = 100
+-        print(node_num)
+-        print(link_num)
+-
+-        state = np.zeros(shape=(pl.WINDOW*(node_num+2 * link_num)+request_holding_time, 10))
+-        print('+++++++++++++++', state.shape)
++        print('+++++++++++++++', self.observation_space.shape)
++        logger.debug("============ state.shape: {}" + str(self.observation_space.shape))
+         # network state:node state
+         for i in range(pl.NODE_NUM):
+             node = self.network.nodes[i + 1]
+@@ -153,7 +183,7 @@ class Game(object):
+                 append_list = [[0 for _ in range(10)]]
+                 for j in range(pl.WINDOW - state_window.shape[0]):
+                     state_window = np.concatenate((state_window, append_list), axis=0)
+-            state[(pl.WINDOW * i):(pl.WINDOW * (i + 1))] = state_window
++            self.observation_space[(pl.WINDOW * i):(pl.WINDOW * (i + 1))] = state_window
+             # print(capacity)
+ 
+         # network state:link state
+@@ -166,7 +196,7 @@ class Game(object):
+                     append_list = [[0 for _ in range(10)]]
+                     for j in range(pl.WINDOW - state_window.shape[0]):
+                         state_window = np.concatenate((state_window, append_list), axis=0)
+-                state[(10 * j):(10 * (j + 1))] = state_window
++                self.observation_space[(10 * j):(10 * (j + 1))] = state_window
+                 j = j + 1
+ 
+         # network state:request state
+@@ -185,12 +215,10 @@ class Game(object):
+                 state_request[m][n] = 1
+         # print('request:', state_request)
+         index = j * pl.WINDOW
+-        print('index: ', index)
+-        print(state.shape)
+-        state[index: (holding_time + index)] = state_request
++        self.observation_space[index: (holding_time + index)] = state_request
+ 
+         # print('state:', state)
+-        return state
++        return self.observation_space
+ 
+     def get_state_path(self, time):
+         pass
+@@ -202,10 +230,9 @@ class Game(object):
+         :param action:
+         :return:
+         """
+-        print('================a new action step==================')
+-        print('the time now is: ', self.time)
+-        print('the event now is: ', self.event_iter)
+-        print('+++++++++++++++++++++++++')
++        logger.info('================a new action step==================')
++        logger.info('the time now is: ' + str(self.time))
++        logger.info('+++++++++++++++++++++++++')
+         if action is -1:
+             return np.array([None, None]), 0, True, None
+         #  --------------------------------------------------------------
+@@ -218,7 +245,7 @@ class Game(object):
+                 reward = NOARRIVAL_NO
+             else:
+                 reward = NOARRIVAL_OT
+-            print('the next time is: ', self.time)
++            logger.info('the next time is: ' + str(self.time))
+             observation = self.get_state_link(self.time)
+             self.time += 1
+         elif self.event[self.event_iter][0] == self.time:
+@@ -228,7 +255,7 @@ class Game(object):
+                     if hasattr(req, 'path'):
+                         self.network.set_wave_state(wave_index=req.wave_index,
+                                                     time_index=req.arrival_time,
+-                                                    holding_time=(req.leave_time-req.arrival_time+1),
++                                                    holding_time=(req.leave_time - req.arrival_time + 1),
+                                                     nodes=req.path,
+                                                     state=True,
+                                                     check=True)
+@@ -239,18 +266,22 @@ class Game(object):
+                     info = True
+                     req = self.request[self.event[self.event_iter][1]]
+                     reward = self.exec_action(action, req)
+-                    print('successfully mapped')
+-                    print('the time is: ', self.time)
+-                    print('the event index is: ', self.event_iter)
++                    logger.info('successfully stepped')
++                    logger.info('the time is: ' + str(self.time))
++                    logger.info('the event index is: ' + str(self.event_iter))
+                     self.event_iter += 1
+-
+-                if self.event_iter == len(self.event):
+-                    done = True
+-                    reward = 0
+-                    observation = self.get_state_link(self.time)
+-                    return observation, reward, done, info
+             observation = self.get_state_link(self.time)
+             self.time += 1
++            if self.event_iter == len(self.event):
++                done = True
++                reward = 0
++                observation = self.get_state_link(self.time)
++                return observation, reward, done, info
++            if self.time >= self.total_time:
++                done = True
++                reward = 0
++                observation = self.get_state_link(self.total_time - 1)
++                return observation, reward, done, info
+         else:
+             raise EnvironmentError("there are some events not handled.")
+ 
+@@ -265,13 +296,13 @@ class Game(object):
+         """
+         path_list = list(self.k_shortest_paths(req.src, req.dst))
+         is_avai, _, _ = self.network.exist_rw_allocation(path_list, req.arrival_time, req.leave_time)
+-        print('the src is:', req.src)
+-        print('the dst is:', req.dst)
+-        print('the arrival time is: ', req.arrival_time)
+-        print('the leave time: ', req.leave_time)
+-        print('path_list:', path_list)
+-        print("is_avai:", is_avai)
+-        print('action is:', action)
++        print('the src is:', str(req.src))
++        print('the dst is:', str(req.dst))
++        print('the arrival time is: ', str(req.arrival_time))
++        print('the leave time: ', str(req.leave_time))
++        print('path_list:', str(path_list))
++        print("is_avai:", str(is_avai))
++        print('action is:', str(action))
+         if action == self.NO_ACTION:
+             if is_avai:
+                 return ARRIVAL_NO
+@@ -281,17 +312,18 @@ class Game(object):
+             if is_avai:
+                 route_index = action // (self.k * self.wave_num)
+                 wave_index = action % (self.k * self.wave_num)
+-                print('route_index: ', route_index)
+-                print('wave_index: ', wave_index)
++                print('route_index: ' + str(route_index))
++                print('wave_index: ' + str(wave_index))
+                 print('-------------------------------')
+                 if self.network.is_allocable(path_list[route_index], wave_index, req.arrival_time, req.leave_time):
+                     self.network.set_wave_state(time_index=req.arrival_time,
+-                                                holding_time=(req.leave_time-req.arrival_time+1),
++                                                holding_time=(req.leave_time - req.arrival_time + 1),
+                                                 wave_index=wave_index,
+                                                 nodes=path_list[route_index],
+                                                 state=False,
+                                                 check=True)
+                     req.add_allocation(path_list[route_index], wave_index)
++                    self.success_request += 1
+                     return ARRIVAL_OP_OT
+                 else:
+                     return ARRIVAL_OP_NO
+diff --git a/Test/test1.py b/Test/test1.py
+index 3286510..a23a909 100644
+--- a/Test/test1.py
++++ b/Test/test1.py
+@@ -22,8 +22,9 @@ class ABC(object):
+ 
+         logger.addHandler(handler)
+         # logger.addHandler(console)
+-
+-        logger.info("Start print log")
++        a = 5
++        print('a:' + str(a))
++        logger.info("Start print log " + str(a))
+         logger.debug("Do something")
+         logger.warning("Something maybe fail.")
+         logger.info("Finish")
+@@ -32,3 +33,19 @@ class ABC(object):
+ if __name__ == '__main__':
+     abc = ABC()
+     abc.main()
++    print(111 and 222)
++    a, b, c = 1, 2, 3
++    if a > b:
++        c = a
++    else:
++        c = b
++    print(c)
++    c = a if a > b else b
++    print(c)
++    c = [b, a][a > b]
++    print(c)
++    d = [a > b]
++    e = [b, a][1]
++    print(e)
++    c = (False or 1)
++    print(c)
+diff --git a/Test/test3.py b/Test/test3.py
+index e69de29..008793d 100644
+--- a/Test/test3.py
++++ b/Test/test3.py
+@@ -0,0 +1,10 @@
++import gym
++
++env = gym.make('CartPole-v0')
++env.reset()
++print(env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps'))
++print(env.action_space.sample())
++print(env.observation_space.sample())
++print(env.action_space.n)
++print(env.reset())
++env.close()
+diff --git a/Train_DQN.py b/Train_DQN.py
+index 6c5c760..fa54f4e 100644
+--- a/Train_DQN.py
++++ b/Train_DQN.py
+@@ -41,26 +41,16 @@ class DQN2NSM(object):
+         :param test:
+         :return:
+         """
+-        env = Game()
+-        env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+-        env.seed(env_seed)
+-        env = chainerrl.wrappers.CastObservationToFloat32(env)
+-        if args.monitor:
+-            env = chainerrl.wrappers.Monitor(env, args.outdir)
+-        if isinstance(env.action_space, spaces.Box):
+-            misc.env_modifiers.make_action_filtered(env, self.clip_action_filter)
+-        print(args.env)
+-        print(env)
+-        print(env.action_space.sample())
+-        print('action-space.low-high', env.action_space.low, env.action_space.high)
+-        print(spaces.box)
+-        if not test:
++        env = Game(mode="LINN", total_time=20, wave_num=10, vm_num=10, max_iter=20, rou=2, mu=15, k=3, f=3, weight=1)
++
++        # env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
++        # env.seed(env_seed)
++        # env = chainerrl.wrappers.CastObservationToFloat32(env)
++        # if not test:
+             # Scale rewards (and thus returns) to a reasonable range so that
+             # training is easier
+-            env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
+-        print(env)
++            # env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
+         return env
+-        pass
+ 
+     def main(self):
+         import logging
+@@ -73,32 +63,20 @@ class DQN2NSM(object):
+         print('Output files are saved in {}'.format(args.outdir))
+ 
+         env = self.env_make(test=False)
+-        timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
+-        obs_space = env.observation_space
+-        obs_size = obs_space.low.size
++        timestep_limit = env.total_time
++        obs_size = env.observation_space.shape[0]
+         action_space = env.action_space
+ 
+-        if isinstance(action_space, spaces.Box):
+-            action_size = action_space.low.size
+-            # Use NAF to apply DQN to continuous action spaces
+-            q_func = q_functions.FCQuadraticStateQFunction(
+-                obs_size, action_size,
+-                n_hidden_channels=args.n_hidden_channels,
+-                n_hidden_layers=args.n_hidden_layers,
+-                action_space=action_space)
+-            # Use the Ornstein-Uhlenbeck process for exploration
+-            ou_sigma = (action_space.high - action_space.low) * 0.2
+-            explorer = explorers.AdditiveOU(sigma=ou_sigma)
+-        else:
+-            n_actions = action_space.n
+-            q_func = q_functions.FCStateQFunctionWithDiscreteAction(
+-                obs_size, n_actions,
+-                n_hidden_channels=args.n_hidden_channels,
+-                n_hidden_layers=args.n_hidden_layers)
+-            # Use epsilon-greedy for exploration
+-            explorer = explorers.LinearDecayEpsilonGreedy(
+-                args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
+-                action_space.sample)
++        # Q function
++        n_actions = action_space.n
++        q_func = q_functions.FCStateQFunctionWithDiscreteAction(
++            obs_size, n_actions,
++            n_hidden_channels=args.n_hidden_channels,
++            n_hidden_layers=args.n_hidden_layers)
++        # Use epsilon-greedy for exploration
++        explorer = explorers.LinearDecayEpsilonGreedy(
++            args.start_epsilon, args.end_epsilon, args.final_exploration_steps,
++            action_space.sample)
+ 
+         if args.noisy_net_sigma is not None:
+             links.to_factorized_noisy(q_func, sigma_scale=args.noisy_net_sigma)
+@@ -106,8 +84,8 @@ class DQN2NSM(object):
+             explorer = explorers.Greedy()
+ 
+         # Draw the computational graph and save it in the output directory.
+-        chainerrl.misc.draw_computational_graph([q_func(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
+-                                                os.path.join(args.outdir, 'model'))
++        # chainerrl.misc.draw_computational_graph([q_func(np.zeros_like(obs_space.low, dtype=np.float32)[None])],
++        #                                        os.path.join(args.outdir, 'model'))
+ 
+         opt = optimizers.Adam()
+         opt.setup(q_func)
+@@ -147,7 +125,7 @@ class DQN2NSM(object):
+         pass
+ 
+     def buffer(self):
+-        rbuf_capacity = 5 * 10 * 5
++        rbuf_capacity = 5 * 10 ** 5
+         if args.minibatch_size is None:
+             args.minibatch_size = 32
+         if args.prioritized_replay:
+@@ -160,4 +138,5 @@ class DQN2NSM(object):
+ 
+ if __name__ == "__main__":
+     dqn = DQN2NSM()
+-    dqn.env_make()
++    dqn.main()
++
+diff --git a/args.py b/args.py
+index 28b7eab..af6e0e9 100644
+--- a/args.py
++++ b/args.py
+@@ -10,12 +10,16 @@ parser.add_argument('--link-capacity', type=int, default=100,
+                     help="链接的容量")
+ parser.add_argument('--node-number', type=int, default=6,
+                     help="节点的数量")
++parser.add_argument('--link-number', type=int, default=20,
++                    help="链接的数量")
++parser.add_argument('--window', type=int, default=10,
++                    help="窗口")
+ 
+ # -------------------------------------------------------------
+ parser.add_argument('--outdir', type=str, default='results',
+                         help='Directory path to save output files.'
+                              ' If it does not exist, it will be created.')
+-parser.add_argument('--env', type=str, default='Pendulum-v0')
++parser.add_argument('--env', type=str, default='NSMGame')
+ parser.add_argument('--seed', type=int, default=0,
+                     help='Random seed [0, 2 ** 32)')
+ parser.add_argument('--gpu', type=int, default=-1)

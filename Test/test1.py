@@ -22,8 +22,9 @@ class ABC(object):
 
         logger.addHandler(handler)
         # logger.addHandler(console)
-
-        logger.info("Start print log")
+        a = 5
+        print('a:' + str(a))
+        logger.info("Start print log " + str(a))
         logger.debug("Do something")
         logger.warning("Something maybe fail.")
         logger.info("Finish")
@@ -32,3 +33,19 @@ class ABC(object):
 if __name__ == '__main__':
     abc = ABC()
     abc.main()
+    print(111 and 222)
+    a, b, c = 1, 2, 3
+    if a > b:
+        c = a
+    else:
+        c = b
+    print(c)
+    c = a if a > b else b
+    print(c)
+    c = [b, a][a > b]
+    print(c)
+    d = [a > b]
+    e = [b, a][1]
+    print(e)
+    c = (False or 1)
+    print(c)

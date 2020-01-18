@@ -10,12 +10,16 @@ parser.add_argument('--link-capacity', type=int, default=100,
                     help="链接的容量")
 parser.add_argument('--node-number', type=int, default=6,
                     help="节点的数量")
+parser.add_argument('--link-number', type=int, default=20,
+                    help="链接的数量")
+parser.add_argument('--window', type=int, default=10,
+                    help="窗口")
 
 # -------------------------------------------------------------
 parser.add_argument('--outdir', type=str, default='results',
                         help='Directory path to save output files.'
                              ' If it does not exist, it will be created.')
-parser.add_argument('--env', type=str, default='Pendulum-v0')
+parser.add_argument('--env', type=str, default='NSMGame')
 parser.add_argument('--seed', type=int, default=0,
                     help='Random seed [0, 2 ** 32)')
 parser.add_argument('--gpu', type=int, default=-1)

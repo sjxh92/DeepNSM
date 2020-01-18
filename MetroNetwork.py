@@ -6,6 +6,13 @@ from itertools import islice
 import random
 import matplotlib.pyplot as plt
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelno)s - %(name)s - '
+                                                '%(levelname)s - %(filename)s - %(funcName)s - '
+                                                '%(message)s')
+logger = logging.getLogger(__name__)
+
 NODE_NUM = 7
 LINK_NUM = 12
 LAMDA = 3 / 10
@@ -96,18 +103,15 @@ class NetworkEnvironment(nx.Graph):
         :param check:
         :return:
         """
-        print("_+_+_+_+_+_+_+_+_+_+_+_+_", nodes)
         assert len(nodes) >= 2
         start_node = nodes[0]
         for i in range(1, len(nodes)):
             end_node = nodes[i]
-            print('the allocated link is: ', start_node, '-->', end_node, self.edges[start_node, end_node])
+            #  logger.info('the allocated link is: ', start_node, '-->', end_node, self.edges[start_node, end_node])
             for j in range(holding_time):
-                print("jjjjjjjjjj: ", j, "holding time: ", holding_time)
                 if check:
                     assert self.get_edge_data(start_node, end_node)['is_wave_avai'][time_index+j][wave_index] != state
                 self.get_edge_data(start_node, end_node)['is_wave_avai'][time_index+j][wave_index] = state
-            print('the allocated link is: ', start_node, '-->', end_node, self.edges[start_node, end_node])
             start_node = end_node
 
     def exist_rw_allocation(self, path_list: list, start_time: int, end_time: int) -> [bool, int, int]:
@@ -121,7 +125,6 @@ class NetworkEnvironment(nx.Graph):
         if len(path_list) == 0 or path_list[0] is None:
             return False, -1, -1
 
-        print("end time: ", end_time, "total time:", self.total_time)
         if end_time > self.total_time - 1:
             return False, -1, -1
 
@@ -131,7 +134,7 @@ class NetworkEnvironment(nx.Graph):
                 is_avai = True
                 for edge in edges:
                     for time in range(end_time-start_time+1):
-                        print('time:', time + start_time)
+                        logger.info('time:' + str(time + start_time))
                         if self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index] is False:
                             is_avai = False
                             break
@@ -149,6 +152,10 @@ class NetworkEnvironment(nx.Graph):
         :param wave_index:
         :return:
         """
+
+        if end_time >= self.total_time:
+            return False
+
         edges = self.extract_path(path)
         is_avai = True
         for edge in edges:
