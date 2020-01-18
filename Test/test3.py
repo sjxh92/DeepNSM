@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+import random
 
 env = gym.make('CartPole-v0')
 env.reset()
@@ -14,9 +15,3 @@ print(env.observation_space.sample())
 print(env.action_space.n)
 print(env.reset())
 env.close()
-
-a = np.zeros(shape=(10, ), dtype=np.float32)
-print(a)
-
-li = [lambda x:x for x in range(10)]
-print(li[0](91))

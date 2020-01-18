@@ -32,9 +32,6 @@ class DQN2NSM(object):
     def __init__(self):
         print()
 
-    def clip_action_filter(self, a, env):
-        return np.clip(a, env.action_space.low, env.action_space.high)
-
     def env_make(self, test=True):
         """
         environment
@@ -64,7 +61,7 @@ class DQN2NSM(object):
 
         env = self.env_make(test=False)
         timestep_limit = env.total_time
-        obs_size = env.observation_space.shape[0]
+        obs_size = env.observation_space.size
         action_space = env.action_space
 
         # Q function

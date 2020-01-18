@@ -74,8 +74,10 @@ class ObservationSpace(object):
         :param link_num:
         :param req_time:
         """
-        self.observation_size = args.window * (node_num + 2 * link_num) + req_time
-        self.observation_space = np.zeros(shape=(self.observation_size, ), dtype=np.float32)
+        self.observation_x = args.window * (node_num + 2 * link_num) + req_time
+        self.observation_y = 10
+        self.observation_size = self.observation_x * self.observation_y
+        self.observation_space = np.zeros(shape=(self.observation_x, self.observation_y), dtype=np.float32)
 
 
 class Game(object):
@@ -117,7 +119,6 @@ class Game(object):
         self.action_space = ActionSpace(10)
         self.success_request = 0
 
-
     def reset(self):
 
         """
@@ -151,18 +152,15 @@ class Game(object):
         # return the first state
         self.time = self.request[0].arrival_time
         observation = self.get_state_link(self.time)
-        reward = INIT
-        done = False
-        info = None
 
-        return observation, reward, done, info
+        return observation
+
+    # def get_state_link(self, time):
+    #     tim = time
+    #     state = np.zeros(shape=(370, 10), dtype=np.float32)
+    #     return state
 
     def get_state_link(self, time):
-        tim = time
-        state = np.zeros(shape=(370, ), dtype=np.float32)
-        return state
-
-    def get_state_link1(self, time):
 
         print('+++++++++++++++', self.observation_space.shape)
         logger.debug("============ state.shape: {}" + str(self.observation_space.shape))
@@ -229,7 +227,7 @@ class Game(object):
             return np.array([None, None]), 0, True, None
         #  --------------------------------------------------------------
         done = False
-        info = False
+        info = {}
         reward = 0
         # check if there are events (arrival of departure)
         if self.event[self.event_iter][0] > self.time:
@@ -255,7 +253,6 @@ class Game(object):
                         pass
                     self.event_iter += 1
                 else:
-                    info = True
                     req = self.request[self.event[self.event_iter][1]]
                     reward = self.exec_action(action, req)
                     logger.info('successfully stepped')
@@ -362,7 +359,6 @@ if __name__ == "__main__":
     obs, _, _, _ = game.reset()
     print(obs)
 
-
     # path = [4, 1, 2, 5]
     # game.network.set_wave_state(time_index=5, holding_time=3, wave_index=1, nodes=path, state=False, check=True)
     # print(game.network.is_allocable(path=path, wave_index=1, start_time=5, end_time=7))
@@ -376,7 +372,7 @@ if __name__ == "__main__":
     #     obs, reward, done, info = game.step(action)
     #     if done:
     #         print(done)
-        # print('obs? ', obs, 'reward? ', reward, 'done? ', done, 'info? ', info)
+    # print('obs? ', obs, 'reward? ', reward, 'done? ', done, 'info? ', info)
     # game.network.show_link_state()
     # print(done)
     # request = Request(1, 1, 6, 1, 4, 1)

@@ -13,17 +13,6 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelno)s - %(n
                                                 '%(message)s')
 logger = logging.getLogger(__name__)
 
-NODE_NUM = 7
-LINK_NUM = 12
-LAMDA = 3 / 10
-J_NODE = 3
-M_VM = 3
-K_LINK = 3
-W_WAVELENGTH = 3
-
-COMPUTING_REQUIREMENT = 5
-BANDWIDTH_REQUIREMENT = 2
-
 
 class NetworkEnvironment(nx.Graph):
 
@@ -33,7 +22,6 @@ class NetworkEnvironment(nx.Graph):
         # node utilization + link utilization + request node + request traffic + holding time
         super(NetworkEnvironment, self).__init__()
         self.net = None
-        self.n_feature = NODE_NUM + LINK_NUM + 1 + 1
         self.action_space = []
         self.wave_num = wave_num
         self.total_time = total_time
