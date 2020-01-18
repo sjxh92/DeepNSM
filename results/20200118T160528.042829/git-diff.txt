@@ -1,0 +1,57 @@
+diff --git a/MetroNetwork.py b/MetroNetwork.py
+index 7af19ff..ac04bec 100644
+--- a/MetroNetwork.py
++++ b/MetroNetwork.py
+@@ -13,6 +13,9 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelno)s - %(n
+                                                 '%(message)s')
+ logger = logging.getLogger(__name__)
+ 
++NODE_NUM = 7
++LINK_NUM = 20
++
+ 
+ class NetworkEnvironment(nx.Graph):
+ 
+@@ -22,6 +25,7 @@ class NetworkEnvironment(nx.Graph):
+         # node utilization + link utilization + request node + request traffic + holding time
+         super(NetworkEnvironment, self).__init__()
+         self.net = None
++        self.n_feature = NODE_NUM + LINK_NUM + 1 + 1
+         self.action_space = []
+         self.wave_num = wave_num
+         self.total_time = total_time
+@@ -47,34 +51,6 @@ class NetworkEnvironment(nx.Graph):
+         else:
+             raise FileExistsError("file {} doesn't exists.".format(filepath))
+ 
+-    def connection_mapping(self, arrivalEvent, path):
+-        traffic = arrivalEvent[2]
+-        topo = self.net.topology
+-        for n, nbrs in topo.adjacency():
+-            for nbr, attr in nbrs.items():
+-                for link in path:
+-                    if n == link[0] and nbr == link[1]:
+-                        topo[n][nbr]["capacity"] -= traffic
+-        connection = pd.DataFrame({'id': 1,
+-                                   'path': path,
+-                                   'wavelength': None,
+-                                   'traffic': traffic,
+-                                   'ta': arrivalEvent[0],
+-                                   'th': arrivalEvent[1]})
+-        self.connections.append(connection)
+-
+-    def connection_release(self, cId, departuretime):
+-        connection = self.connections.loc(self.connections['id'] == cId)
+-        path = connection['path']
+-        traffic = connection['traffic']
+-        topo = self.net.topology
+-        for n, nbrs in topo.adjacency():
+-            for nbr, attr in nbrs.items():
+-                for link in path:
+-                    if n == link[0] and nbr == link[1]:
+-                        topo[n][nbr]['capacity'] += traffic
+-        self.connections = self.connections[~self.connections['id'].isin(cId)]
+-
+     def set_wave_state(self, time_index: int,
+                        holding_time: int,
+                        wave_index: int,
