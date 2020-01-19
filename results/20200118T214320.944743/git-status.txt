@@ -1,0 +1,34 @@
+位于分支 master
+您的分支与上游分支 'origin/master' 一致。
+
+要提交的变更：
+  （使用 "git reset HEAD <文件>..." 以取消暂存）
+
+	新文件：   results/20200118T214237.835200/100_finish/model.npz
+	新文件：   results/20200118T214237.835200/100_finish/optimizer.npz
+	新文件：   results/20200118T214237.835200/100_finish/target_model.npz
+	新文件：   results/20200118T214237.835200/args.txt
+	新文件：   results/20200118T214237.835200/command.txt
+	新文件：   results/20200118T214237.835200/environ.txt
+	新文件：   results/20200118T214237.835200/git-diff.txt
+	新文件：   results/20200118T214237.835200/git-head.txt
+	新文件：   results/20200118T214237.835200/git-log.txt
+	新文件：   results/20200118T214237.835200/git-status.txt
+	新文件：   results/20200118T214237.835200/scores.txt
+
+尚未暂存以备提交的变更：
+  （使用 "git add <文件>..." 更新要提交的内容）
+  （使用 "git checkout -- <文件>..." 丢弃工作区的改动）
+
+	修改：     MetroNetwork.py
+	修改：     NSMGame.py
+	修改：     args.py
+
+未跟踪的文件:
+  （使用 "git add <文件>..." 以包含要提交的内容）
+
+	.idea/misc.xml
+	Test/log111.txt
+	__pycache__/
+	results/20200118T214320.944743/
+

@@ -14,6 +14,8 @@ parser.add_argument('--link-number', type=int, default=20,
                     help="链接的数量")
 parser.add_argument('--window', type=int, default=10,
                     help="窗口")
+parser.add_argument('--reward', type=int, default=1)
+parser.add_argument('--punish', type=int, default=-1)
 
 # -------------------------------------------------------------
 parser.add_argument('--outdir', type=str, default='results',
@@ -30,7 +32,7 @@ parser.add_argument('--end-epsilon', type=float, default=0.1)
 parser.add_argument('--noisy-net-sigma', type=float, default=None)
 parser.add_argument('--demo', action='store_true', default=False)
 parser.add_argument('--load', type=str, default=None)
-parser.add_argument('--steps', type=int, default=10 ** 2)
+parser.add_argument('--steps', type=int, default=10 ** 4+1000)
 parser.add_argument('--prioritized-replay', action='store_true')
 parser.add_argument('--replay-start-size', type=int, default=1000)
 parser.add_argument('--target-update-interval', type=int, default=10 ** 2)

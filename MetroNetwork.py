@@ -25,7 +25,6 @@ class NetworkEnvironment(nx.Graph):
         # node utilization + link utilization + request node + request traffic + holding time
         super(NetworkEnvironment, self).__init__()
         self.net = None
-        self.n_feature = NODE_NUM + LINK_NUM + 1 + 1
         self.action_space = []
         self.wave_num = wave_num
         self.total_time = total_time
@@ -98,7 +97,6 @@ class NetworkEnvironment(nx.Graph):
                 is_avai = True
                 for edge in edges:
                     for time in range(end_time-start_time+1):
-                        logger.info('time:' + str(time + start_time))
                         if self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index] is False:
                             is_avai = False
                             break

@@ -1,0 +1,2 @@
+steps	episodes	elapsed	mean	median	stdev	max	min	average_q	average_loss	n_updates
+10000	625	269.4055075645447	5.0	5.0	0.0	5.0	5.0	63.06632334033661	3.652798766249976	9000

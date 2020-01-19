@@ -15,14 +15,16 @@ logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelno)s - %(n
 logger = logging.getLogger(__name__)
 
 # there is no request arriving or leaving at this time
-NOARRIVAL_NO = 1  # choose no_action
-NOARRIVAL_OT = -1  # choose other actions
 
-ARRIVAL_NO = 1
-ARRIVAL_NOOP = 1
-ARRIVAL_NOOP_OT = 1
-ARRIVAL_OP_OT = 1
-ARRIVAL_OP_NO = 1
+NOARRIVAL_OT = 1
+NOARRIVAL_NO = -1
+
+# 该时间点有业务到达（可能同时有业务离去），但是没有可达RW选项
+ARRIVAL_NOOP_NO = args.punish  # 选择No-Action
+ARRIVAL_NOOP_OT = args.punish  # 选择其他RW选项
+# 该时间点有业务到达（可能同时有业务离去），并且有可达RW选项
+ARRIVAL_OP_OT = args.reward  # 选择可达的RW选项
+ARRIVAL_OP_NO = args.punish  # 选择不可达或者No-Action
 
 INIT = 0
 
@@ -111,6 +113,7 @@ class Game(object):
         self.time = 0
         self.event = []
         self.request = {}
+        self.steps = 0
 
         node_num = self.network.number_of_nodes()
         link_num = self.network.number_of_edges()
@@ -130,6 +133,7 @@ class Game(object):
         self.event_iter = 0
         self.event = []
         self.time = 0
+        self.steps = 0
 
         base_time = 0
         rand_val = int(random.random() * 1000000000)
@@ -162,8 +166,6 @@ class Game(object):
 
     def get_state_link(self, time):
 
-        print('+++++++++++++++', self.observation_space.shape)
-        logger.debug("============ state.shape: {}" + str(self.observation_space.shape))
         # network state:node state
         for i in range(pl.NODE_NUM):
             node = self.network.nodes[i + 1]
@@ -210,19 +212,22 @@ class Game(object):
         # print('state:', state)
         return self.observation_space
 
-    def get_state_path(self, time):
+    def get_state_path(self, src, dst, time):
+
+        paths = self.k_shortest_paths(src, dst)
+
         pass
 
-    def step(self, action) -> [object, float, bool, dict]:
+    def step(self, action):
 
         """
         according to action, interact with environment
         :param action:
         :return:
         """
-        logger.info('================a new action step==================')
-        logger.info('the time now is: ' + str(self.time))
-        logger.info('+++++++++++++++++++++++++')
+        self.steps += 1
+        logger.info('================a new action step================== the step is: ' + str(self.steps))
+        logger.info('----------------the time now is--------------------------------- ' + str(self.time))
         if action is -1:
             return np.array([None, None]), 0, True, None
         #  --------------------------------------------------------------
@@ -235,7 +240,6 @@ class Game(object):
                 reward = NOARRIVAL_NO
             else:
                 reward = NOARRIVAL_OT
-            logger.info('the next time is: ' + str(self.time))
             observation = self.get_state_link(self.time)
             self.time += 1
         elif self.event[self.event_iter][0] == self.time:
@@ -255,9 +259,9 @@ class Game(object):
                 else:
                     req = self.request[self.event[self.event_iter][1]]
                     reward = self.exec_action(action, req)
-                    logger.info('successfully stepped')
-                    logger.info('the time is: ' + str(self.time))
-                    logger.info('the event index is: ' + str(self.event_iter))
+                    logger.debug('an arrival request: ' + str(self.event_iter) +
+                                 ' is handled (y or n) and the reward is: ' + str(reward) +
+                                 ' the action is: ' + str(action))
                     self.event_iter += 1
             observation = self.get_state_link(self.time)
             self.time += 1
@@ -285,25 +289,29 @@ class Game(object):
         """
         path_list = list(self.k_shortest_paths(req.src, req.dst))
         is_avai, _, _ = self.network.exist_rw_allocation(path_list, req.arrival_time, req.leave_time)
-        print('the src is:', str(req.src))
-        print('the dst is:', str(req.dst))
-        print('the arrival time is: ', str(req.arrival_time))
-        print('the leave time: ', str(req.leave_time))
-        print('path_list:', str(path_list))
-        print("is_avai:", str(is_avai))
-        print('action is:', str(action))
+        logger.debug('+++++++++++++++++++++++++')
+        logger.debug('the src is:' + str(req.src))
+        logger.debug('the dst is:' + str(req.dst))
+        logger.debug('the arrival time is: ' + str(req.arrival_time))
+        logger.debug('the leave time: ' + str(req.leave_time))
+        logger.debug('path_list:' + str(path_list))
+        logger.debug("is_avai:" + str(is_avai))
+        logger.debug('action is:' + str(action))
+        logger.debug('+++++++++++++++++++++++++')
         if action == self.NO_ACTION:
             if is_avai:
-                return ARRIVAL_NO
+                # there is available path, but choose no-action
+                return ARRIVAL_OP_NO
             else:
-                return ARRIVAL_NOOP
+                # there is no available path, but choose no-action
+                return ARRIVAL_NOOP_NO
         else:
             if is_avai:
                 route_index = action // (self.k * self.wave_num)
                 wave_index = action % (self.k * self.wave_num)
-                print('route_index: ' + str(route_index))
-                print('wave_index: ' + str(wave_index))
-                print('-------------------------------')
+                # print('route_index: ' + str(route_index))
+                # print('wave_index: ' + str(wave_index))
+                # print('-------------------------------')
                 if self.network.is_allocable(path_list[route_index], wave_index, req.arrival_time, req.leave_time):
                     self.network.set_wave_state(time_index=req.arrival_time,
                                                 holding_time=(req.leave_time - req.arrival_time + 1),
@@ -313,10 +321,13 @@ class Game(object):
                                                 check=True)
                     req.add_allocation(path_list[route_index], wave_index)
                     self.success_request += 1
+                    # there is available path, and the action is useful
                     return ARRIVAL_OP_OT
                 else:
+                    # there is available path, and the action is no use
                     return ARRIVAL_OP_NO
             else:
+                # there is no available path, and choose an available action
                 return ARRIVAL_NOOP_OT
 
     def k_shortest_paths(self, source, target):
@@ -350,25 +361,42 @@ class Game(object):
 
 
 if __name__ == "__main__":
-    game = Game(mode="LINN", total_time=20, wave_num=10, vm_num=10, max_iter=20, rou=2, mu=15, k=3, f=3, weight=1)
-    # paths = list(game.k_shortest_paths(1, 6))
-    # print(paths)
+    game = Game(mode="LINN", total_time=100, wave_num=10, vm_num=10, max_iter=30, rou=2, mu=33, k=3, f=3, weight=1)
+    paths = list(game.k_shortest_paths(2, 6))
+    print(paths)
+    obs = np.zeros(shape=(10, 10), dtype=np.float32)
+    for i in range(len(paths)):
+        path = paths[i]
+        # for link
+        time = 0
+        wave = 0
+        state = True
+        for j in range(len(path) - 1):
+            s, d = path[j], path[j + 1]
+            print('link: ', s, '-->', d)
+            link = game.network.get_edge_data(s, d)['is_wave_avai']
+            state = state & link[time][wave]
+            print(link)
+        obs[time][wave] = state
+
+
+
     # print(game.network.nodes[1]['capacity'])
     # print(game.network.edges[1, 3]['is_wave_avai'])
     print(game.observation_space)
-    obs, _, _, _ = game.reset()
+    obs = game.reset()
     print(obs)
 
     # path = [4, 1, 2, 5]
     # game.network.set_wave_state(time_index=5, holding_time=3, wave_index=1, nodes=path, state=False, check=True)
     # print(game.network.is_allocable(path=path, wave_index=1, start_time=5, end_time=7))
 
-    print('--------------------the service requests---------------')
+    # print('--------------------the service requests---------------')
     # show_requests()
-    print('--------------------the network state-------------------')
+    # print('--------------------the network state-------------------')
     # done = False
-    # action = 1
     # while not done:
+    #     action = random.randrange(10)
     #     obs, reward, done, info = game.step(action)
     #     if done:
     #         print(done)
