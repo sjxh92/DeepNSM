@@ -39,9 +39,10 @@ class Request(object):
         self.leave_time = leave_time
         self.traffic = traffic
 
-    def add_allocation(self, path: list, wave_index: int):
+    def add_allocation(self, path: list, wave_index: int, node_index: int):
         self.path = path
         self.wave_index = wave_index
+        self.node_index = node_index
 
 
 def show_requests():
@@ -69,17 +70,17 @@ class ActionSpace(object):
 
 
 class ObservationSpace(object):
-    def __init__(self, node_num, link_num, req_time):
+    def __init__(self, k_paths, n, pn):
         """
 
         :param node_num:
         :param link_num:
         :param req_time:
         """
-        self.observation_x = args.window * (node_num + 2 * link_num) + req_time
+        self.observation_x = args.window * (1 + n) * k_paths + (2 * pn)
         self.observation_y = 10
         self.observation_size = self.observation_x * self.observation_y
-        self.observation_space = np.zeros(shape=(self.observation_x, self.observation_y), dtype=np.float32)
+        self.observation = np.zeros(shape=(self.observation_x, self.observation_y), dtype=np.float32)
 
 
 class Game(object):
@@ -115,10 +116,11 @@ class Game(object):
         self.request = {}
         self.steps = 0
 
+        # candidate node for function mapping
+        self.n = 2
         node_num = self.network.number_of_nodes()
-        link_num = self.network.number_of_edges()
-        req_time = 100
-        self.observation_space = ObservationSpace(node_num, link_num, req_time).observation_space
+
+        self.observation = ObservationSpace(k, self.n, node_num).observation
         self.action_space = ActionSpace(10)
         self.success_request = 0
 
@@ -137,7 +139,6 @@ class Game(object):
 
         base_time = 0
         rand_val = int(random.random() * 1000000000)
-        print('rand_val:', rand_val)
         np.random.seed(8)
         for base_index in range(self.max_iter):
             src = np.random.randint(1, pl.NODE_NUM)
@@ -155,7 +156,10 @@ class Game(object):
 
         # return the first state
         self.time = self.request[0].arrival_time
-        observation = self.get_state_link(self.time)
+        src = self.request[0].src
+        dst = self.request[0].dst
+        demand = self.request[0].traffic
+        observation = self.get_state_path(src, dst, demand, self.time)
 
         return observation
 
@@ -212,11 +216,52 @@ class Game(object):
         # print('state:', state)
         return self.observation_space
 
-    def get_state_path(self, src, dst, time):
+    def get_state_path(self, src, dst, demand, time):
+        paths = list(game.k_shortest_paths(src, dst))
+        for i in range(len(paths)):
+            path = paths[i]
+            # for link
+            # |||||||||||||
+            # ||||||||||||| 10
+            # |||||||||||||
+            state_path = np.empty(shape=(10, 10), dtype=bool)
+            state_path[:] = True
+            for j in range(len(path) - 1):
+                s, d = path[j], path[j + 1]
+                # print('link: ', s, '-->', d)
+                link = game.network.get_edge_data(s, d)['is_wave_avai']
+                state_path = state_path & link[time: time + args.window]
+            # for node
+            # |||||||||||||
+            # ||||||||||||| 10
+            # |||||||||||||
+            # -------------
+            # |||||||||||||
+            # ||||||||||||| 10
+            # |||||||||||||
 
-        paths = self.k_shortest_paths(src, dst)
+            node_weight = np.arange(len(path))
+            for m in range(len(path)):
+                state_for_sum = game.network.nodes[path[m]]['capacity'][time: time + args.window]
+                node_weight[m] = np.sum(state_for_sum)
+            sorted_node_index = np.argsort(-node_weight)
 
-        pass
+            node1 = game.network.nodes[path[sorted_node_index[0]]]['capacity'][time: time + args.window]
+            node2 = game.network.nodes[path[sorted_node_index[1]]]['capacity'][time: time + args.window]
+
+            state_node = np.concatenate((node1, node2), axis=0)
+
+            state = np.concatenate((state_path, state_node), axis=0)
+            self.observation[30 * i: 30 * (i + 1)] = state
+        # for request (src, dst, demand)
+        demand = demand // 10 + 1
+        state_req = np.zeros(shape=(2 * 7, 10), dtype=np.float32)
+        for i in range(demand):
+            state_req[src - 1, i] = 1
+            state_req[dst + 6, i] = 1
+        self.observation[90: 90+2*7] = state_req
+
+        return self.observation
 
     def step(self, action):
 
@@ -307,19 +352,26 @@ class Game(object):
                 return ARRIVAL_NOOP_NO
         else:
             if is_avai:
-                route_index = action // (self.k * self.wave_num)
-                wave_index = action % (self.k * self.wave_num)
+                route_index = action // (2 * 3)
+                wave_index = (action % (2 * 3)) // 2
+                node_index = action % 2
                 # print('route_index: ' + str(route_index))
                 # print('wave_index: ' + str(wave_index))
                 # print('-------------------------------')
-                if self.network.is_allocable(path_list[route_index], wave_index, req.arrival_time, req.leave_time):
+                if self.network.is_allocable(path_list[route_index], wave_index, node_index,
+                                             req.traffic, req.arrival_time, req.leave_time):
                     self.network.set_wave_state(time_index=req.arrival_time,
                                                 holding_time=(req.leave_time - req.arrival_time + 1),
                                                 wave_index=wave_index,
                                                 nodes=path_list[route_index],
                                                 state=False,
                                                 check=True)
-                    req.add_allocation(path_list[route_index], wave_index)
+                    self.network.set_node_state(time_index=req.arrival_time,
+                                                holding_time=(req.leave_time - req.arrival_time + 1),
+                                                node_index=node_index,
+                                                demand=req.traffic,
+                                                state=1)
+                    req.add_allocation(path_list[route_index], wave_index, node_index)
                     self.success_request += 1
                     # there is available path, and the action is useful
                     return ARRIVAL_OP_OT
@@ -363,29 +415,17 @@ class Game(object):
 if __name__ == "__main__":
     game = Game(mode="LINN", total_time=100, wave_num=10, vm_num=10, max_iter=30, rou=2, mu=33, k=3, f=3, weight=1)
     paths = list(game.k_shortest_paths(2, 6))
-    print(paths)
-    obs = np.zeros(shape=(10, 10), dtype=np.float32)
-    for i in range(len(paths)):
-        path = paths[i]
-        # for link
-        time = 0
-        wave = 0
-        state = True
-        for j in range(len(path) - 1):
-            s, d = path[j], path[j + 1]
-            print('link: ', s, '-->', d)
-            link = game.network.get_edge_data(s, d)['is_wave_avai']
-            state = state & link[time][wave]
-            print(link)
-        obs[time][wave] = state
-
-
+    # print(paths)
 
     # print(game.network.nodes[1]['capacity'])
     # print(game.network.edges[1, 3]['is_wave_avai'])
-    print(game.observation_space)
+    print("1", game.observation)
+    print(np.sum(game.observation))
     obs = game.reset()
-    print(obs)
+    print(np.sum(obs))
+    obs = game.get_state_path(2, 6, 7, 0)
+    print(np.sum(obs))
+    print(obs.shape)
 
     # path = [4, 1, 2, 5]
     # game.network.set_wave_state(time_index=5, holding_time=3, wave_index=1, nodes=path, state=False, check=True)

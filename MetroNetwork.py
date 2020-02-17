@@ -77,6 +77,22 @@ class NetworkEnvironment(nx.Graph):
                 self.get_edge_data(start_node, end_node)['is_wave_avai'][time_index+j][wave_index] = state
             start_node = end_node
 
+    def set_node_state(self, time_index: int, holding_time: int, node_index: int, demand: int, state: int):
+        """
+
+        :param node_index:
+        :param time_index:
+        :param holding_time:
+        :param demand:
+        :param state:
+        :return:
+        """
+        for i in range(holding_time):
+            demand = demand // 10
+            demand = demand + np.sum(self.nodes[node_index]['capacity'][time_index+i])
+            for j in range(demand):
+                self.nodes[node_index]['capacity'][time_index+i][j] = state
+
     def exist_rw_allocation(self, path_list: list, start_time: int, end_time: int) -> [bool, int, int]:
         """
         check all the paths and all the wavelengths in path list
@@ -105,9 +121,11 @@ class NetworkEnvironment(nx.Graph):
 
         return False, -1, -1
 
-    def is_allocable(self, path: list, wave_index: int, start_time: int, end_time: int) -> bool:
+    def is_allocable(self, path: list, wave_index: int, node_index: int, demand: int, start_time: int, end_time: int) -> bool:
         """
         if the wave_index in path is available
+        :param demand:
+        :param node_index:
         :param end_time:
         :param start_time:
         :param path:
@@ -126,6 +144,9 @@ class NetworkEnvironment(nx.Graph):
                 if not self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index]:
                     is_avai = False
                     break
+        for time in range(end_time-start_time+1):
+            if np.sum(self.nodes[node_index]['capacity'][start_time+time]) < demand:
+                is_avai = False
         return is_avai
 
     def extract_path(self, nodes: list) -> list:
