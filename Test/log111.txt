@@ -1,0 +1,81 @@
+2020-01-10 14:45:09,896 - __main__ - WARNING - Something maybe fail.
+2020-01-10 14:45:09,896 - __main__ - INFO - Finish
+2020-01-10 23:20:22,391 - __main__ - INFO - Start print log
+2020-01-10 23:20:22,391 - __main__ - WARNING - Something maybe fail.
+2020-01-10 23:20:22,391 - __main__ - INFO - Finish
+2020-01-10 23:22:38,093 - __main__ - WARNING - Something maybe fail.
+2020-01-10 23:22:38,093 - __main__ - INFO - Finish
+2020-01-10 23:22:52,157 - __main__ - INFO - Start print log 6
+2020-01-10 23:22:52,157 - __main__ - WARNING - Something maybe fail.
+2020-01-10 23:22:52,157 - __main__ - INFO - Finish
+2020-01-10 23:23:27,781 - __main__ - WARNING - Something maybe fail.
+2020-01-10 23:23:27,782 - __main__ - INFO - Finish
+2020-01-10 23:24:32,224 - __main__ - INFO - Start print log 5
+2020-01-10 23:24:32,224 - __main__ - WARNING - Something maybe fail.
+2020-01-10 23:24:32,225 - __main__ - INFO - Finish
+2020-01-10 23:25:21,781 - __main__ - INFO - Start print log 5
+2020-01-10 23:25:21,781 - __main__ - WARNING - Something maybe fail.
+2020-01-10 23:25:21,781 - __main__ - INFO - Finish
+2020-01-12 15:05:25,235 - __main__ - INFO - Start print log 5
+2020-01-12 15:05:25,243 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:05:25,243 - __main__ - INFO - Finish
+2020-01-12 15:07:13,882 - __main__ - INFO - Start print log 5
+2020-01-12 15:07:13,883 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:07:13,883 - __main__ - INFO - Finish
+2020-01-12 15:08:25,532 - __main__ - INFO - Start print log 5
+2020-01-12 15:08:25,532 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:08:25,532 - __main__ - INFO - Finish
+2020-01-12 15:09:52,638 - __main__ - INFO - Start print log 5
+2020-01-12 15:09:52,638 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:09:52,638 - __main__ - INFO - Finish
+2020-01-12 15:10:16,181 - __main__ - INFO - Start print log 5
+2020-01-12 15:10:16,181 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:10:16,181 - __main__ - INFO - Finish
+2020-01-12 15:10:56,362 - __main__ - INFO - Start print log 5
+2020-01-12 15:10:56,362 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:10:56,362 - __main__ - INFO - Finish
+2020-01-12 15:11:04,256 - __main__ - INFO - Start print log 5
+2020-01-12 15:11:04,256 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:11:04,256 - __main__ - INFO - Finish
+2020-01-12 15:11:14,830 - __main__ - INFO - Start print log 5
+2020-01-12 15:11:14,830 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:11:14,830 - __main__ - INFO - Finish
+2020-01-12 15:11:40,009 - __main__ - INFO - Start print log 5
+2020-01-12 15:11:40,010 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:11:40,010 - __main__ - INFO - Finish
+2020-01-12 15:11:43,932 - __main__ - INFO - Start print log 5
+2020-01-12 15:11:43,933 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:11:43,933 - __main__ - INFO - Finish
+2020-01-12 15:13:04,535 - __main__ - INFO - Start print log 5
+2020-01-12 15:13:04,535 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:13:04,535 - __main__ - INFO - Finish
+2020-01-12 15:13:05,798 - __main__ - INFO - Start print log 5
+2020-01-12 15:13:05,799 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:13:05,799 - __main__ - INFO - Finish
+2020-01-12 15:13:08,216 - __main__ - INFO - Start print log 5
+2020-01-12 15:13:08,216 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:13:08,216 - __main__ - INFO - Finish
+2020-01-12 15:13:11,867 - __main__ - INFO - Start print log 5
+2020-01-12 15:13:11,867 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:13:11,867 - __main__ - INFO - Finish
+2020-01-12 15:14:47,771 - __main__ - INFO - Start print log 5
+2020-01-12 15:14:47,771 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:14:47,771 - __main__ - INFO - Finish
+2020-01-12 15:16:18,929 - __main__ - INFO - Start print log 5
+2020-01-12 15:16:18,929 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:16:18,929 - __main__ - INFO - Finish
+2020-01-12 15:17:05,584 - __main__ - INFO - Start print log 5
+2020-01-12 15:17:05,584 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:17:05,585 - __main__ - INFO - Finish
+2020-01-12 15:17:44,872 - __main__ - INFO - Start print log 5
+2020-01-12 15:17:44,872 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:17:44,872 - __main__ - INFO - Finish
+2020-01-12 15:17:56,594 - __main__ - INFO - Start print log 5
+2020-01-12 15:17:56,595 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:17:56,595 - __main__ - INFO - Finish
+2020-01-12 15:18:27,911 - __main__ - INFO - Start print log 5
+2020-01-12 15:18:27,911 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:18:27,911 - __main__ - INFO - Finish
+2020-01-12 15:18:40,810 - __main__ - INFO - Start print log 5
+2020-01-12 15:18:40,810 - __main__ - WARNING - Something maybe fail.
+2020-01-12 15:18:40,810 - __main__ - INFO - Finish
