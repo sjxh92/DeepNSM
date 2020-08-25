@@ -1,0 +1,89 @@
+位于分支 master
+您的分支领先 'origin/master' 共 1 个提交。
+  （使用 "git push" 来发布您的本地提交）
+
+要提交的变更：
+  （使用 "git reset HEAD <文件>..." 以取消暂存）
+
+	新文件：   Test/test4.py
+	新文件：   Test/test5.py
+	新文件：   results/20200220T144326.408641/args.txt
+	新文件：   results/20200220T144326.408641/command.txt
+	新文件：   results/20200220T144326.408641/environ.txt
+	新文件：   results/20200220T144326.408641/git-diff.txt
+	新文件：   results/20200220T144326.408641/git-head.txt
+	新文件：   results/20200220T144326.408641/git-log.txt
+	新文件：   results/20200220T144326.408641/git-status.txt
+	新文件：   results/20200220T144554.587531/args.txt
+	新文件：   results/20200220T144554.587531/command.txt
+	新文件：   results/20200220T144554.587531/environ.txt
+	新文件：   results/20200220T144554.587531/git-diff.txt
+	新文件：   results/20200220T144554.587531/git-head.txt
+	新文件：   results/20200220T144554.587531/git-log.txt
+	新文件：   results/20200220T144554.587531/git-status.txt
+	新文件：   results/20200220T144554.587531/scores.txt
+	新文件：   results/20200220T145555.240152/10028_except/model.npz
+	新文件：   results/20200220T145555.240152/10028_except/optimizer.npz
+	新文件：   results/20200220T145555.240152/10028_except/target_model.npz
+	新文件：   results/20200220T145555.240152/args.txt
+	新文件：   results/20200220T145555.240152/command.txt
+	新文件：   results/20200220T145555.240152/environ.txt
+	新文件：   results/20200220T145555.240152/git-diff.txt
+	新文件：   results/20200220T145555.240152/git-head.txt
+	新文件：   results/20200220T145555.240152/git-log.txt
+	新文件：   results/20200220T145555.240152/git-status.txt
+	新文件：   results/20200220T145555.240152/scores.txt
+	新文件：   results/20200220T161231.738511/1000_finish/model.npz
+	新文件：   results/20200220T161231.738511/1000_finish/optimizer.npz
+	新文件：   results/20200220T161231.738511/1000_finish/target_model.npz
+	新文件：   results/20200220T161231.738511/args.txt
+	新文件：   results/20200220T161231.738511/command.txt
+	新文件：   results/20200220T161231.738511/environ.txt
+	新文件：   results/20200220T161231.738511/git-diff.txt
+	新文件：   results/20200220T161231.738511/git-head.txt
+	新文件：   results/20200220T161231.738511/git-log.txt
+	新文件：   results/20200220T161231.738511/git-status.txt
+	新文件：   results/20200220T161231.738511/scores.txt
+	新文件：   results/20200221T204919.224273/1000_finish/model.npz
+	新文件：   results/20200221T204919.224273/1000_finish/optimizer.npz
+	新文件：   results/20200221T204919.224273/1000_finish/target_model.npz
+	新文件：   results/20200221T204919.224273/args.txt
+	新文件：   results/20200221T204919.224273/command.txt
+	新文件：   results/20200221T204919.224273/environ.txt
+	新文件：   results/20200221T204919.224273/git-diff.txt
+	新文件：   results/20200221T204919.224273/git-head.txt
+	新文件：   results/20200221T204919.224273/git-log.txt
+	新文件：   results/20200221T204919.224273/git-status.txt
+	新文件：   results/20200221T204919.224273/scores.txt
+	新文件：   results/20200221T212640.746543/100_finish/model.npz
+	新文件：   results/20200221T212640.746543/100_finish/optimizer.npz
+	新文件：   results/20200221T212640.746543/100_finish/target_model.npz
+	新文件：   results/20200221T212640.746543/args.txt
+	新文件：   results/20200221T212640.746543/command.txt
+	新文件：   results/20200221T212640.746543/environ.txt
+	新文件：   results/20200221T212640.746543/git-diff.txt
+	新文件：   results/20200221T212640.746543/git-head.txt
+	新文件：   results/20200221T212640.746543/git-log.txt
+	新文件：   results/20200221T212640.746543/git-status.txt
+	新文件：   results/20200221T212640.746543/scores.txt
+
+尚未暂存以备提交的变更：
+  （使用 "git add <文件>..." 更新要提交的内容）
+  （使用 "git checkout -- <文件>..." 丢弃工作区的改动）
+
+	修改：     MetroNetwork.py
+	修改：     NSMGame.py
+	修改：     Test/test.py
+	修改：     Test/test4.py
+	修改：     Test/test5.py
+	修改：     Train_DQN.py
+	修改：     args.py
+
+未跟踪的文件:
+  （使用 "git add <文件>..." 以包含要提交的内容）
+
+	.idea/misc.xml
+	Test/log111.txt
+	__pycache__/
+	results/20200221T213128.889092/
+

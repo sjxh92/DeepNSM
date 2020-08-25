@@ -1,0 +1,679 @@
+diff --git a/MetroNetwork.py b/MetroNetwork.py
+index 3f991c7..38ae8ea 100644
+--- a/MetroNetwork.py
++++ b/MetroNetwork.py
+@@ -50,48 +50,57 @@ class NetworkEnvironment(nx.Graph):
+         else:
+             raise FileExistsError("file {} doesn't exists.".format(filepath))
+ 
+-    def set_wave_state(self, time_index: int,
+-                       holding_time: int,
++    def set_wave_state(self, start_time: int,
++                       end_time: int,
+                        wave_index: int,
+-                       nodes: list,
++                       path: list,
+                        state: bool,
+                        check: bool = True):
+         """
+         set the state of a certain wavelength on a path
+-        :param holding_time:
+-        :param time_index:
++        :param path: node list of path
++        :param start_time:
++        :param end_time:
+         :param wave_index:
+-        :param nodes:
+         :param state:
+         :param check:
+         :return:
+         """
+-        assert len(nodes) >= 2
+-        start_node = nodes[0]
+-        for i in range(1, len(nodes)):
+-            end_node = nodes[i]
++        assert len(path) >= 2
++        start_node = path[0]
++        wave_index_sorted = self.wave_rank(path, start_time, end_time, wave_index)
++        for i in range(1, len(path)):
++            end_node = path[i]
+             #  logger.info('the allocated link is: ', start_node, '-->', end_node, self.edges[start_node, end_node])
+-            for j in range(holding_time):
++            for j in range(end_time - start_time + 1):
+                 if check:
+-                    assert self.get_edge_data(start_node, end_node)['is_wave_avai'][time_index+j][wave_index] != state
+-                self.get_edge_data(start_node, end_node)['is_wave_avai'][time_index+j][wave_index] = state
++                    assert self.get_edge_data(start_node, end_node)['is_wave_avai'][start_time+j][wave_index_sorted] != state
++                self.get_edge_data(start_node, end_node)['is_wave_avai'][start_time+j][wave_index_sorted] = state
+             start_node = end_node
+ 
+-    def set_node_state(self, time_index: int, holding_time: int, node_index: int, demand: int, state: int):
++    def set_node_state(self, start_time: int,
++                       end_time: int,
++                       path: list,
++                       node_index: int,
++                       demand: int,
++                       state: int):
+         """
+ 
++        :param path:
+         :param node_index:
+-        :param time_index:
+-        :param holding_time:
++        :param start_time:
++        :param end_time:
+         :param demand:
+         :param state:
+         :return:
+         """
+-        for i in range(holding_time):
++        node_index_sorted = self.node_rank(path, start_time, end_time, node_index)
++        for i in range(end_time - start_time + 1):
+             demand = demand // 10
+-            demand = demand + np.sum(self.nodes[node_index]['capacity'][time_index+i])
++            demand = demand + np.sum(self.nodes[node_index_sorted]['capacity'][start_time+i])
+             for j in range(demand):
+-                self.nodes[node_index]['capacity'][time_index+i][j] = state
++                self.nodes[node_index_sorted]['capacity'][start_time+i][j] = state
++        return node_index_sorted
+ 
+     def exist_rw_allocation(self, path_list: list, start_time: int, end_time: int) -> [bool, int, int]:
+         """
+@@ -110,20 +119,48 @@ class NetworkEnvironment(nx.Graph):
+         for path_index, nodes in enumerate(path_list):
+             edges = self.extract_path(nodes)
+             for wave_index in range(self.wave_num):
+-                is_avai = True
++                w_avai = True
+                 for edge in edges:
+                     for time in range(end_time-start_time+1):
+                         if self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index] is False:
+-                            is_avai = False
++                            w_avai = False
+                             break
+-                if is_avai is True:
++                    if w_avai is False:
++                        break
++                if w_avai is True:
+                     return True, path_index, wave_index
+ 
+         return False, -1, -1
+ 
+-    def is_allocable(self, path: list, wave_index: int, node_index: int, demand: int, start_time: int, end_time: int) -> bool:
++    def wave_rank(self, path: list, start_time: int, end_time: int, wave_index: int):
++        edges = self.extract_path(path)
++        wave_weight = np.arange(self.wave_num)
++        for wave in range(self.wave_num):
++            wave_sum = 0
++            for time in range(end_time - start_time + 1):
++                for edge in edges:
++                    wave_sum = wave_sum + self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time + time][wave]
++            wave_weight[wave] = wave_sum
++        sorted_wave_weight = np.argsort(-wave_weight)
++        wave_index_sorted = sorted_wave_weight[wave_index]
++        return wave_index_sorted
++
++    def node_rank(self, path: list, start_time: int, end_time: int, node_index: int):
++        node_weight = np.arange(len(path))
++        for node in range(len(path)):
++            node_sum = 0
++            for time in range(end_time - start_time + 1):
++                node_sum = node_sum + np.sum(self.nodes[path[node]]['capacity'][start_time + time])
++            node_weight[node] = node_sum
++        sorted_node_weight = np.argsort(node_weight)
++        node_index_sorted = sorted_node_weight[node_index]
++        physical_node_index = path[node_index_sorted]
++        return physical_node_index
++
++    def is_allocable(self, req, path: list, wave_index: int, node_index: int, demand: int, start_time: int, end_time: int) -> bool:
+         """
+         if the wave_index in path is available
++        :param req:
+         :param demand:
+         :param node_index:
+         :param end_time:
+@@ -137,16 +174,25 @@ class NetworkEnvironment(nx.Graph):
+             return False
+ 
+         edges = self.extract_path(path)
++
++        wave_index_sorted = self.wave_rank(path, start_time, end_time, wave_index)
++        physical_node_index = self.node_rank(path, start_time, end_time, node_index)
++
+         is_avai = True
+         for edge in edges:
+             # print("the link:", edge[0], "-->", edge[1], "is: ", self.get_edge_data(edge[0], edge[1])['is_wave_avai'])
+             for time in range(end_time-start_time+1):
+-                if not self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index]:
++                if not self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index_sorted]:
+                     is_avai = False
++                    print('\033[1;32;40m the bandwidth is not enough', req.index)
+                     break
++            if is_avai is False:
++                break
+         for time in range(end_time-start_time+1):
+-            if np.sum(self.nodes[node_index]['capacity'][start_time+time]) < demand:
++            if np.sum(self.nodes[physical_node_index]['capacity'][start_time+time]) > 10 - demand:
+                 is_avai = False
++                print('\033[1;32;40m the processing is not enough', req.index)
++                break
+         return is_avai
+ 
+     def extract_path(self, nodes: list) -> list:
+@@ -173,4 +219,5 @@ class NetworkEnvironment(nx.Graph):
+ if __name__ == "__main__":
+     TP = NetworkEnvironment("7node_10link", "/home/mario/PycharmProjects/DeepNSM/Resource", 8, 10, 10)
+     print(TP.nodes.data())
++    print(TP.nodes[1])
+     # print(TP.edges.data())
+diff --git a/NSMGame.py b/NSMGame.py
+index 5888c2d..577d0b4 100644
+--- a/NSMGame.py
++++ b/NSMGame.py
+@@ -9,7 +9,7 @@ import chainer
+ import chainerrl
+ import logging
+ 
+-logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelno)s - %(name)s - '
++logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelno)s - %(name)s - '
+                                                 '%(levelname)s - %(filename)s - %(funcName)s - '
+                                                 '%(message)s')
+ logger = logging.getLogger(__name__)
+@@ -85,8 +85,7 @@ class ObservationSpace(object):
+ 
+ class Game(object):
+     def __init__(self, mode: str, total_time: int, wave_num: int, vm_num: int, max_iter: int, rou: float, mu: float,
+-                 k: int, f: int,
+-                 weight):
++                 k: int, w: int, n: int, weight):
+         """
+ 
+         :param mode:
+@@ -107,21 +106,26 @@ class Game(object):
+         self.rou = rou
+         self.mu = mu
+         self.k = k
+-        self.f = f
++        self.w = w
+         self.weight = weight
+-        self.NO_ACTION = k * f
++        self.NO_ACTION = k * w * n
+         self.event_iter = 0
+         self.time = 0
+         self.event = []
+         self.request = {}
++        self.time_event = {}
+         self.steps = 0
++        self.failed_req = []
++
++        for time in range(total_time+10):
++            self.time_event[time] = []
+ 
+         # candidate node for function mapping
+-        self.n = 2
+-        node_num = self.network.number_of_nodes()
++        self.n = n
++        self.node_num = self.network.number_of_nodes()
+ 
+-        self.observation = ObservationSpace(k, self.n, node_num).observation
+-        self.action_space = ActionSpace(10)
++        self.observation = ObservationSpace(k, self.n, self.node_num).observation
++        self.action_space = ActionSpace(self.k * self.w * self.n)
+         self.success_request = 0
+ 
+     def reset(self):
+@@ -134,12 +138,17 @@ class Game(object):
+ 
+         self.event_iter = 0
+         self.event = []
++        self.request = {}
+         self.time = 0
+         self.steps = 0
++        self.success_request = 0
++
++        for time in range(self.total_time+10):
++            self.time_event[time] = []
+ 
+         base_time = 0
+         rand_val = int(random.random() * 1000000000)
+-        np.random.seed(8)
++        np.random.seed(7)
+         for base_index in range(self.max_iter):
+             src = np.random.randint(1, pl.NODE_NUM)
+             dst = src
+@@ -147,19 +156,22 @@ class Game(object):
+                 dst = np.random.randint(1, pl.NODE_NUM)
+             arrival = np.random.poisson(lam=self.rou) + base_time + 1
+             leave = np.random.poisson(lam=self.mu) + arrival + 1
+-            traffic = np.random.randint(0, 10)
++            traffic = np.random.randint(7, 10)
+             self.request[base_index] = Request(base_index, src, dst, arrival, leave, traffic)
+             self.event.append([arrival, base_index, True])
++            self.time_event[arrival].append(len(self.event) - 1)
+             self.event.append([leave, base_index, False])
++            self.time_event[leave].append(len(self.event) - 1)
++
+             base_time = arrival
+-        self.event.sort(key=lambda time: time[0])
++        # self.event.sort(key=lambda time: time[0])
+ 
+         # return the first state
+         self.time = self.request[0].arrival_time
+         src = self.request[0].src
+         dst = self.request[0].dst
+         demand = self.request[0].traffic
+-        observation = self.get_state_path(src, dst, demand, self.time)
++        observation = self.get_state_path(self.request[0])
+ 
+         return observation
+ 
+@@ -216,8 +228,9 @@ class Game(object):
+         # print('state:', state)
+         return self.observation_space
+ 
+-    def get_state_path(self, src, dst, demand, time):
+-        paths = list(game.k_shortest_paths(src, dst))
++    def get_state_path(self, req: Request):
++
++        paths = list(self.k_shortest_paths(req.src, req.dst))
+         for i in range(len(paths)):
+             path = paths[i]
+             # for link
+@@ -229,8 +242,8 @@ class Game(object):
+             for j in range(len(path) - 1):
+                 s, d = path[j], path[j + 1]
+                 # print('link: ', s, '-->', d)
+-                link = game.network.get_edge_data(s, d)['is_wave_avai']
+-                state_path = state_path & link[time: time + args.window]
++                link = self.network.get_edge_data(s, d)['is_wave_avai']
++                state_path = state_path & link[req.arrival_time: req.arrival_time + args.window]
+             # for node
+             # |||||||||||||
+             # ||||||||||||| 10
+@@ -242,28 +255,31 @@ class Game(object):
+ 
+             node_weight = np.arange(len(path))
+             for m in range(len(path)):
+-                state_for_sum = game.network.nodes[path[m]]['capacity'][time: time + args.window]
++                state_for_sum = self.network.nodes[path[m]]['capacity'] \
++                    [req.arrival_time: req.arrival_time + args.window]
+                 node_weight[m] = np.sum(state_for_sum)
+             sorted_node_index = np.argsort(-node_weight)
+ 
+-            node1 = game.network.nodes[path[sorted_node_index[0]]]['capacity'][time: time + args.window]
+-            node2 = game.network.nodes[path[sorted_node_index[1]]]['capacity'][time: time + args.window]
++            node1 = self.network.nodes[path[sorted_node_index[0]]]['capacity'] \
++                [req.arrival_time: req.arrival_time + args.window]
++            node2 = self.network.nodes[path[sorted_node_index[1]]]['capacity'] \
++                [req.arrival_time: req.arrival_time + args.window]
+ 
+             state_node = np.concatenate((node1, node2), axis=0)
+ 
+             state = np.concatenate((state_path, state_node), axis=0)
+             self.observation[30 * i: 30 * (i + 1)] = state
+         # for request (src, dst, demand)
+-        demand = demand // 10 + 1
++        demand = req.traffic // 10 + 1
+         state_req = np.zeros(shape=(2 * 7, 10), dtype=np.float32)
+         for i in range(demand):
+-            state_req[src - 1, i] = 1
+-            state_req[dst + 6, i] = 1
+-        self.observation[90: 90+2*7] = state_req
++            state_req[req.src - 1, i] = 1
++            state_req[req.dst + 6, i] = 1
++        self.observation[90: 90 + 2 * 7] = state_req
+ 
+         return self.observation
+ 
+-    def step(self, action):
++    def step1(self, action):
+ 
+         """
+         according to action, interact with environment
+@@ -279,13 +295,15 @@ class Game(object):
+         done = False
+         info = {}
+         reward = 0
++        current_event = self.event[self.event_iter]
++        current_request = self.request[current_event[1]]
+         # check if there are events (arrival of departure)
+         if self.event[self.event_iter][0] > self.time:
+             if action == self.k * self.wave_num:
+                 reward = NOARRIVAL_NO
+             else:
+                 reward = NOARRIVAL_OT
+-            observation = self.get_state_link(self.time)
++            observation = self.get_state_path(current_request)
+             self.time += 1
+         elif self.event[self.event_iter][0] == self.time:
+             while self.event[self.event_iter][0] == self.time:
+@@ -308,7 +326,7 @@ class Game(object):
+                                  ' is handled (y or n) and the reward is: ' + str(reward) +
+                                  ' the action is: ' + str(action))
+                     self.event_iter += 1
+-            observation = self.get_state_link(self.time)
++                    observation = self.get_state_path(self.request[self.event[self.event_iter][1]])
+             self.time += 1
+             if self.event_iter == len(self.event):
+                 done = True
+@@ -325,6 +343,42 @@ class Game(object):
+ 
+         return observation, reward, done, info
+ 
++    def step(self, action):
++
++        logger.debug('==============time===============' + str(self.time))
++        event_index_list = self.time_event[self.time]
++        next_event_index_list = self.time_event[self.time + 1]
++        observation = ObservationSpace(self.k, self.n, self.node_num).observation
++        reward = 0
++        info = {}
++        done = False
++        if event_index_list:
++            for event_index in event_index_list:
++                event = self.event[event_index]
++                if event[2]:
++                    req = self.request[event[1]]
++                    reward = self.exec_action(action, req)
++                    if req.index == len(self.request) - 1:
++                        done = True
++                    if next_event_index_list:
++                        for next_event_index in next_event_index_list:
++                            event = self.event[next_event_index]
++                            if event[2]:
++                                req = self.request[event[1]]
++                                observation = self.get_state_path(req)
++                            else:
++                                pass
++                    else:
++                        pass
++                else:
++                    pass
++        else:
++            pass
++
++        self.time += 1
++
++        return observation, reward, done, info
++
+     def exec_action(self, action: int, req: Request) -> float:
+         """
+         for the given request, execute the action and get the reward
+@@ -334,15 +388,17 @@ class Game(object):
+         """
+         path_list = list(self.k_shortest_paths(req.src, req.dst))
+         is_avai, _, _ = self.network.exist_rw_allocation(path_list, req.arrival_time, req.leave_time)
+-        logger.debug('+++++++++++++++++++++++++')
+-        logger.debug('the src is:' + str(req.src))
+-        logger.debug('the dst is:' + str(req.dst))
+-        logger.debug('the arrival time is: ' + str(req.arrival_time))
+-        logger.debug('the leave time: ' + str(req.leave_time))
+-        logger.debug('path_list:' + str(path_list))
+-        logger.debug("is_avai:" + str(is_avai))
+-        logger.debug('action is:' + str(action))
+-        logger.debug('+++++++++++++++++++++++++')
++        # logger.debug('+++++++++++++++++++++++++')
++        # logger.debug('the index of this request is:' + str(req.index))
++        # logger.debug('the src is:' + str(req.src))
++        # logger.debug('the dst is:' + str(req.dst))
++        # logger.debug('the arrival time is: ' + str(req.arrival_time))
++        # logger.debug('the leave time: ' + str(req.leave_time))
++        # logger.debug('path_list:' + str(path_list))
++        # logger.debug('the traffic demand is:' + str(req.traffic))
++        # logger.debug("is_avai:" + str(is_avai))
++        # logger.debug('action is:' + str(action))
++        # logger.debug('+++++++++++++++++++++++++')
+         if action == self.NO_ACTION:
+             if is_avai:
+                 # there is available path, but choose no-action
+@@ -358,28 +414,34 @@ class Game(object):
+                 # print('route_index: ' + str(route_index))
+                 # print('wave_index: ' + str(wave_index))
+                 # print('-------------------------------')
+-                if self.network.is_allocable(path_list[route_index], wave_index, node_index,
++                path = path_list[route_index]
++                if self.network.is_allocable(req, path, wave_index, node_index,
+                                              req.traffic, req.arrival_time, req.leave_time):
+-                    self.network.set_wave_state(time_index=req.arrival_time,
+-                                                holding_time=(req.leave_time - req.arrival_time + 1),
++                    self.network.set_wave_state(start_time=req.arrival_time,
++                                                end_time=req.leave_time,
+                                                 wave_index=wave_index,
+-                                                nodes=path_list[route_index],
++                                                path=path,
+                                                 state=False,
+                                                 check=True)
+-                    self.network.set_node_state(time_index=req.arrival_time,
+-                                                holding_time=(req.leave_time - req.arrival_time + 1),
++                    physical_node_index = self.network.set_node_state(start_time=req.arrival_time,
++                                                end_time=req.leave_time,
++                                                path=path,
+                                                 node_index=node_index,
+                                                 demand=req.traffic,
+                                                 state=1)
+-                    req.add_allocation(path_list[route_index], wave_index, node_index)
++                    req.add_allocation(path_list[route_index], wave_index, physical_node_index)
+                     self.success_request += 1
++                    logger.info('*****the success request: ' + str(self.success_request))
++                    print('\033[1;32;45m*****the success request: ' + str(self.success_request))
+                     # there is available path, and the action is useful
+                     return ARRIVAL_OP_OT
+                 else:
+                     # there is available path, and the action is no use
++                    self.failed_req.append(req.index)
+                     return ARRIVAL_OP_NO
+             else:
+                 # there is no available path, and choose an available action
++                self.failed_req.append(req.index)
+                 return ARRIVAL_NOOP_OT
+ 
+     def k_shortest_paths(self, source, target):
+@@ -411,9 +473,37 @@ class Game(object):
+         # paths_pandas.sort_values(by='weight', ascending=False)
+         return path_k
+ 
++    def show_results(self):
++        for i in self.request:
++            print('request index:', self.request[i].index)
++            print('request src:', self.request[i].src)
++            print('request dst:', self.request[i].dst)
++            print('request start:', self.request[i].arrival_time)
++            print('request end:', self.request[i].leave_time)
++            print('request traffic:', self.request[i].traffic)
++            if hasattr(self.request[i], 'path'):
++                print('request path:', self.request[i].path)
++            if hasattr(self.request[i], 'wave_index'):
++                print('request wave index:', self.request[i].wave_index)
++            if hasattr(self.request[i], 'node_index'):
++                print('request node index:', self.request[i].node_index)
++            print('===========================')
++        print('the success request is: ', self.success_request)
++        print("the failed requests are: ", self.failed_req)
++
+ 
+ if __name__ == "__main__":
+-    game = Game(mode="LINN", total_time=100, wave_num=10, vm_num=10, max_iter=30, rou=2, mu=33, k=3, f=3, weight=1)
++    game = Game(mode="LINN",
++                total_time=300,
++                wave_num=10,
++                vm_num=10,
++                max_iter=40,
++                rou=2,
++                mu=40,
++                k=3,
++                w=3,
++                n=2,
++                weight=1)
+     paths = list(game.k_shortest_paths(2, 6))
+     # print(paths)
+ 
+@@ -423,24 +513,28 @@ if __name__ == "__main__":
+     print(np.sum(game.observation))
+     obs = game.reset()
+     print(np.sum(obs))
+-    obs = game.get_state_path(2, 6, 7, 0)
+-    print(np.sum(obs))
+-    print(obs.shape)
++    print(game.event)
++    print(game.time_event)
++    print(game.time_event[8])
++    # obs = game.get_state_path(2, 6, 7, 0)
++    # print(np.sum(obs))
++    # print(obs.shape)
+ 
+     # path = [4, 1, 2, 5]
+     # game.network.set_wave_state(time_index=5, holding_time=3, wave_index=1, nodes=path, state=False, check=True)
+     # print(game.network.is_allocable(path=path, wave_index=1, start_time=5, end_time=7))
+ 
+-    # print('--------------------the service requests---------------')
+-    # show_requests()
+-    # print('--------------------the network state-------------------')
+-    # done = False
+-    # while not done:
+-    #     action = random.randrange(10)
+-    #     obs, reward, done, info = game.step(action)
+-    #     if done:
+-    #         print(done)
+-    # print('obs? ', obs, 'reward? ', reward, 'done? ', done, 'info? ', info)
++    print('--------------------the service requests---------------')
++    show_requests()
++    print('--------------------the network state-------------------')
++    done = False
++    while not done:
++        action = game.action_space.sample()
++        obs, reward, done, info = game.step(action)
++        if done:
++            print(done)
++    print('obs? ', obs, 'reward? ', reward, 'done? ', done, 'info? ', info)
++    game.show_results()
+     # game.network.show_link_state()
+     # print(done)
+     # request = Request(1, 1, 6, 1, 4, 1)
+diff --git a/Test/test.py b/Test/test.py
+index e022f24..bb33f8d 100644
+--- a/Test/test.py
++++ b/Test/test.py
+@@ -25,3 +25,14 @@ print(e)
+ print(e.shape)
+ print('a:', a)
+ 
++a = np.arange(10)
++print(a)
++a[0] = 1
++a[1] = 4
++a[2] = 2
++a[3] = 9
++b = np.argsort(a)
++print(a)
++print(b)
++c = np.sum(b)
++print(c)
+diff --git a/Test/test4.py b/Test/test4.py
+index e69de29..f6139ab 100644
+--- a/Test/test4.py
++++ b/Test/test4.py
+@@ -0,0 +1,18 @@
++import numpy as np
++
++a = {}
++a[1] = [2, 3, 4]
++a[2] = [5, 6]
++a[3] = []
++a[6] = []
++
++a[1].append(7)
++a[3].append(8)
++a[6].append(11)
++a[6].append(12)
++print(a)
++print(len(a[3]))
++a[3].append(9)
++print(len(a[3]))
++
++
+diff --git a/Test/test5.py b/Test/test5.py
+index e69de29..c287d68 100644
+--- a/Test/test5.py
++++ b/Test/test5.py
+@@ -0,0 +1,13 @@
++import numpy as np
++a = np.empty(5)
++print(a)
++a[0] = 12
++a[1] = 23
++a[2] = 15
++a[3] = 3
++a[4] = 15
++
++b = np.argsort(a)
++
++print(b)
++print(b[0])
+diff --git a/Train_DQN.py b/Train_DQN.py
+index 05c2e38..6fd856a 100644
+--- a/Train_DQN.py
++++ b/Train_DQN.py
+@@ -38,20 +38,31 @@ class DQN2NSM(object):
+         :param test:
+         :return:
+         """
+-        env = Game(mode="LINN", total_time=20, wave_num=10, vm_num=10, max_iter=20, rou=2, mu=15, k=3, f=3, weight=1)
++        # env = Game(mode="LINN", total_time=20, wave_num=10, vm_num=10, max_iter=20, rou=2, mu=15, k=3, f=3, weight=1)
++        env = Game(mode="LINN",
++                   total_time=300,
++                   wave_num=10,
++                   vm_num=10,
++                   max_iter=40,
++                   rou=2,
++                   mu=40,
++                   k=3,
++                   w=3,
++                   n=2,
++                   weight=1)
+ 
+         # env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
+         # env.seed(env_seed)
+         # env = chainerrl.wrappers.CastObservationToFloat32(env)
+         # if not test:
+-            # Scale rewards (and thus returns) to a reasonable range so that
+-            # training is easier
+-            # env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
++        # Scale rewards (and thus returns) to a reasonable range so that
++        # training is easier
++        # env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
+         return env
+ 
+     def main(self):
+         import logging
+-        logging.basicConfig(level=logging.DEBUG)
++        logging.basicConfig(level=logging.INFO)
+ 
+         # Set a random seed used in ChainerRL
+         misc.set_random_seed(args.seed, gpus=(args.gpu,))
+@@ -61,7 +72,7 @@ class DQN2NSM(object):
+ 
+         env = self.env_make(test=False)
+         timestep_limit = env.total_time
+-        obs_size = env.observation_space.size
++        obs_size = env.observation.size
+         action_space = env.action_space
+ 
+         # Q function
+@@ -136,4 +147,3 @@ class DQN2NSM(object):
+ if __name__ == "__main__":
+     dqn = DQN2NSM()
+     dqn.main()
+-
+diff --git a/args.py b/args.py
+index 0daa638..b64d8a8 100644
+--- a/args.py
++++ b/args.py
+@@ -32,7 +32,7 @@ parser.add_argument('--end-epsilon', type=float, default=0.1)
+ parser.add_argument('--noisy-net-sigma', type=float, default=None)
+ parser.add_argument('--demo', action='store_true', default=False)
+ parser.add_argument('--load', type=str, default=None)
+-parser.add_argument('--steps', type=int, default=10 ** 4+1000)
++parser.add_argument('--steps', type=int, default=500)
+ parser.add_argument('--prioritized-replay', action='store_true')
+ parser.add_argument('--replay-start-size', type=int, default=1000)
+ parser.add_argument('--target-update-interval', type=int, default=10 ** 2)

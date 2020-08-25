@@ -50,48 +50,67 @@ class NetworkEnvironment(nx.Graph):
         else:
             raise FileExistsError("file {} doesn't exists.".format(filepath))
 
-    def set_wave_state(self, time_index: int,
-                       holding_time: int,
+    def reset(self):
+        for i in range(NODE_NUM):
+            for j in range(self.nodes[i+1]['capacity'].shape[0]):
+                for k in range(self.nodes[i+1]['capacity'].shape[1]):
+                    self.nodes[i+1]['capacity'][j][k] = 0
+        for u, v in self.edges:
+            for m in range(self.get_edge_data(u, v)['is_wave_avai'].shape[0]):
+                for n in range(self.get_edge_data(u, v)['is_wave_avai'].shape[1]):
+                    self.get_edge_data(u, v)['is_wave_avai'][m][n] = True
+
+    def set_wave_state(self, start_time: int,
+                       end_time: int,
                        wave_index: int,
-                       nodes: list,
+                       path: list,
                        state: bool,
                        check: bool = True):
         """
         set the state of a certain wavelength on a path
-        :param holding_time:
-        :param time_index:
+        :param path: node list of path
+        :param start_time:
+        :param end_time:
         :param wave_index:
-        :param nodes:
         :param state:
         :param check:
         :return:
         """
-        assert len(nodes) >= 2
-        start_node = nodes[0]
-        for i in range(1, len(nodes)):
-            end_node = nodes[i]
+        assert len(path) >= 2
+        start_node = path[0]
+        wave_index_sorted = self.wave_rank(path, start_time, end_time, wave_index)
+        for i in range(1, len(path)):
+            end_node = path[i]
             #  logger.info('the allocated link is: ', start_node, '-->', end_node, self.edges[start_node, end_node])
-            for j in range(holding_time):
+            for j in range(end_time - start_time + 1):
                 if check:
-                    assert self.get_edge_data(start_node, end_node)['is_wave_avai'][time_index+j][wave_index] != state
-                self.get_edge_data(start_node, end_node)['is_wave_avai'][time_index+j][wave_index] = state
+                    assert self.get_edge_data(start_node, end_node)['is_wave_avai'][start_time+j][wave_index_sorted] != state
+                self.get_edge_data(start_node, end_node)['is_wave_avai'][start_time+j][wave_index_sorted] = state
             start_node = end_node
 
-    def set_node_state(self, time_index: int, holding_time: int, node_index: int, demand: int, state: int):
+    def set_node_state(self, start_time: int,
+                       end_time: int,
+                       path: list,
+                       node_index: int,
+                       demand: int,
+                       state: int):
         """
 
+        :param path:
         :param node_index:
-        :param time_index:
-        :param holding_time:
+        :param start_time:
+        :param end_time:
         :param demand:
         :param state:
         :return:
         """
-        for i in range(holding_time):
+        node_index_sorted = self.node_rank(path, start_time, end_time, node_index)
+        for i in range(end_time - start_time + 1):
             demand = demand // 10
-            demand = demand + np.sum(self.nodes[node_index]['capacity'][time_index+i])
+            demand = demand + np.sum(self.nodes[node_index_sorted]['capacity'][start_time+i])
             for j in range(demand):
-                self.nodes[node_index]['capacity'][time_index+i][j] = state
+                self.nodes[node_index_sorted]['capacity'][start_time+i][j] = state
+        return node_index_sorted
 
     def exist_rw_allocation(self, path_list: list, start_time: int, end_time: int) -> [bool, int, int]:
         """
@@ -110,20 +129,48 @@ class NetworkEnvironment(nx.Graph):
         for path_index, nodes in enumerate(path_list):
             edges = self.extract_path(nodes)
             for wave_index in range(self.wave_num):
-                is_avai = True
+                w_avai = True
                 for edge in edges:
                     for time in range(end_time-start_time+1):
                         if self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index] is False:
-                            is_avai = False
+                            w_avai = False
                             break
-                if is_avai is True:
+                    if w_avai is False:
+                        break
+                if w_avai is True:
                     return True, path_index, wave_index
 
         return False, -1, -1
 
-    def is_allocable(self, path: list, wave_index: int, node_index: int, demand: int, start_time: int, end_time: int) -> bool:
+    def wave_rank(self, path: list, start_time: int, end_time: int, wave_index: int):
+        edges = self.extract_path(path)
+        wave_weight = np.arange(self.wave_num)
+        for wave in range(self.wave_num):
+            wave_sum = 0
+            for time in range(end_time - start_time + 1):
+                for edge in edges:
+                    wave_sum = wave_sum + self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time + time][wave]
+            wave_weight[wave] = wave_sum
+        sorted_wave_weight = np.argsort(-wave_weight)
+        wave_index_sorted = sorted_wave_weight[wave_index]
+        return wave_index_sorted
+
+    def node_rank(self, path: list, start_time: int, end_time: int, node_index: int):
+        node_weight = np.arange(len(path))
+        for node in range(len(path)):
+            node_sum = 0
+            for time in range(end_time - start_time + 1):
+                node_sum = node_sum + np.sum(self.nodes[path[node]]['capacity'][start_time + time])
+            node_weight[node] = node_sum
+        sorted_node_weight = np.argsort(node_weight)
+        node_index_sorted = sorted_node_weight[node_index]
+        physical_node_index = path[node_index_sorted]
+        return physical_node_index
+
+    def is_allocable(self, req, path: list, wave_index: int, node_index: int, demand: int, start_time: int, end_time: int) -> bool:
         """
         if the wave_index in path is available
+        :param req:
         :param demand:
         :param node_index:
         :param end_time:
@@ -137,16 +184,25 @@ class NetworkEnvironment(nx.Graph):
             return False
 
         edges = self.extract_path(path)
+
+        wave_index_sorted = self.wave_rank(path, start_time, end_time, wave_index)
+        physical_node_index = self.node_rank(path, start_time, end_time, node_index)
+
         is_avai = True
         for edge in edges:
             # print("the link:", edge[0], "-->", edge[1], "is: ", self.get_edge_data(edge[0], edge[1])['is_wave_avai'])
             for time in range(end_time-start_time+1):
-                if not self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index]:
+                if not self.get_edge_data(edge[0], edge[1])['is_wave_avai'][start_time+time][wave_index_sorted]:
                     is_avai = False
+                    print('\033[1;32;40m the bandwidth is not enough', req.index)
                     break
+            if is_avai is False:
+                break
         for time in range(end_time-start_time+1):
-            if np.sum(self.nodes[node_index]['capacity'][start_time+time]) < demand:
+            if np.sum(self.nodes[physical_node_index]['capacity'][start_time+time]) > 10 - demand:
                 is_avai = False
+                print('\033[1;32;40m the processing is not enough', req.index)
+                break
         return is_avai
 
     def extract_path(self, nodes: list) -> list:
@@ -173,4 +229,12 @@ class NetworkEnvironment(nx.Graph):
 if __name__ == "__main__":
     TP = NetworkEnvironment("7node_10link", "/home/mario/PycharmProjects/DeepNSM/Resource", 8, 10, 10)
     print(TP.nodes.data())
-    # print(TP.edges.data())
+    print(TP.edges.data())
+    for s, d in TP.edges:
+        print(TP.get_edge_data(s, d))
+    TP.reset()
+    print('------------------------------')
+    for s, d in TP.edges:
+        print(TP.get_edge_data(s, d))
+    print(TP.get_edge_data(5, 7)['is_wave_avai'])
+

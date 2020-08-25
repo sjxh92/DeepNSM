@@ -25,3 +25,14 @@ print(e)
 print(e.shape)
 print('a:', a)
 
+a = np.arange(10)
+print(a)
+a[0] = 1
+a[1] = 4
+a[2] = 2
+a[3] = 9
+b = np.argsort(a)
+print(a)
+print(b)
+c = np.sum(b)
+print(c)

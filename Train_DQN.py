@@ -38,20 +38,31 @@ class DQN2NSM(object):
         :param test:
         :return:
         """
-        env = Game(mode="LINN", total_time=20, wave_num=10, vm_num=10, max_iter=20, rou=2, mu=15, k=3, f=3, weight=1)
+        # env = Game(mode="LINN", total_time=20, wave_num=10, vm_num=10, max_iter=20, rou=2, mu=15, k=3, f=3, weight=1)
+        env = Game(mode="LINN",
+                   total_time=300,
+                   wave_num=10,
+                   vm_num=10,
+                   max_iter=40,
+                   rou=2,
+                   mu=40,
+                   k=3,
+                   w=3,
+                   n=2,
+                   weight=1)
 
         # env_seed = 2 ** 32 - 1 - args.seed if test else args.seed
         # env.seed(env_seed)
         # env = chainerrl.wrappers.CastObservationToFloat32(env)
         # if not test:
-            # Scale rewards (and thus returns) to a reasonable range so that
-            # training is easier
-            # env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
+        # Scale rewards (and thus returns) to a reasonable range so that
+        # training is easier
+        # env = chainerrl.wrappers.ScaleReward(env, args.reward_scale_factor)
         return env
 
     def main(self):
         import logging
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
 
         # Set a random seed used in ChainerRL
         misc.set_random_seed(args.seed, gpus=(args.gpu,))
@@ -61,7 +72,7 @@ class DQN2NSM(object):
 
         env = self.env_make(test=False)
         timestep_limit = env.total_time
-        obs_size = env.observation_space.size
+        obs_size = env.observation.size
         action_space = env.action_space
 
         # Q function
@@ -136,4 +147,3 @@ class DQN2NSM(object):
 if __name__ == "__main__":
     dqn = DQN2NSM()
     dqn.main()
-
